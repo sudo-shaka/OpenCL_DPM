@@ -1,9 +1,23 @@
-#include<cmath>
-#include "cell.hpp"
-#include<vector>
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+#include <cmath>
+#include <vector>
 #include <array>
+#include <CL/opencl.hpp>
+#include <stdexcept>
+#include <fstream>
+#include <vector>
+#include <string>
+#include "cell.hpp"
 
 #define NV3D = 162
+
+std::string readKernelSource(const std::string& filename){
+  std::ifstream file(filename);
+  if(!file.is_open()){
+    throw std::runtime_error("Failed to  find kernel file: " + filename);
+  }
+  return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+}
 
 namespace DPM{
   Cell2D::Cell2D(float x0, float y0, float CalA, int numVerts, float r0){
@@ -125,6 +139,48 @@ namespace DPM{
     cache[0] = key; cache[1] = i;
     midpointCache.push_back(cache);
     return i;
+  }
+
+  void Cell3D::VolumeForceUpdate(){
+    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
+
+    // OpenCL Setup
+    cl::Platform platform = cl::Platform::getDefault();
+    cl::Device device = cl::Device::getDefault();
+    cl::Context context({device});
+
+    // Compile the kernel
+    cl::Program program(context, kernelSource);
+    program.build({device});
+
+
+
+    // Buffers
+/*    cl::Buffer bufferA(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * N * N, A.data());
+    cl::Buffer bufferB(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * N * N, B.data());
+    cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeof(float) * N * N);
+
+    // Create Kernel
+    cl::Kernel kernel(program, "VolumeForceUpdate3D");
+    kernel.setArg(0, bufferA);
+    kernel.setArg(1, bufferB);
+    kernel.setArg(2, bufferC);
+    kernel.setArg(3, N);
+
+    // Command Queue
+    cl::CommandQueue queue(context, device);
+    cl::NDRange globalSize(N, N);
+    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize);
+    queue.enqueueReadBuffer(bufferC, CL_TRUE, 0, sizeof(float) * N * N, C.data());
+
+    // Print Result
+    std::cout << "Result Matrix C:" << std::endl;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            std::cout << C[i * N + j] << " ";
+        }
+        std::cout << std::endl;
+    }*/
   }
 }
 

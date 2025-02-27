@@ -59,6 +59,7 @@ namespace DPM{
     float l0;
     Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
     int AddMiddlePoint(int p1, int p2);
+    void VolumeForceUpdate();
   };
 }
 
