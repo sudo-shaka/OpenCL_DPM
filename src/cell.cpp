@@ -111,6 +111,8 @@ namespace DPM{
     for(int i=0;i<3;i++){
       middlePoint[i] = vert1[i] + vert2[i];
       middlePoint[i] *= 0.5;
+    }
+    for(int i=0;i<3;i++){
       float norm = std::sqrt(middlePoint[0] * middlePoint[0] 
           + middlePoint[1] * middlePoint[1] 
           + middlePoint[2] * middlePoint[2]);
