@@ -21,10 +21,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   */
   int NUM_FACES = 320; //number of faces
   int NUM_VERTICES = 162; //number of vertices
-  
+
   int ci  = get_global_id(0); //cell index
   int fi  = get_global_id(1); //face index at that cell
-  
+
   int face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
 
@@ -72,16 +72,22 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float sa0, float Ka){
   int NUM_FACES = 320; //number of faces
   int NUM_VERTICES = 162; //number of vertices
-  
+
   int ci  = get_global_id(0); //cell index
   int fi  = get_global_id(1); //face index at that cell
-  
+
   int face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
 
   float4 pos0 = Verts[vert_indicies[0]];
   float4 pos1 = Verts[vert_indicies[1]];
   float4 pos2 = Verts[vert_indicies[2]];
+
+  float4 lv0 = pos1 - pos0;
+  float4 lv1 = pos2 - pos1;
+  float4 lv2 = pos0 - pos2;
+
+  float4 lenghs = (float4)(sqrt(dot(lv0,lv0)), sqrt(dot(lv1,lv1)), sqrt(dot(lv2,lv2)), 0.0f);
 }
 
 __kernel void UpdatePosition(__global float4* Verts, __global float4* Forces, int NCELLS ,float dt){
