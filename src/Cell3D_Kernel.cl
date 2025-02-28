@@ -64,8 +64,30 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float4 B = pos2 - pos0;
 
   float4 normal = normalize(cross(A, B));
+  Forces[vert_indicies[0]] -= Kv * 0.5f * volumeStrain * normal;
+  Forces[vert_indicies[1]] -= Kv * 0.5f * volumeStrain * normal;
+  Forces[vert_indicies[2]] -= Kv * 0.5f * volumeStrain * normal;
+}
 
-  force0 -= Kv * 0.5f * volumeStrain * normal;
-  force1 -= Kv * 0.5f * volumeStrain * normal;
-  force2 -= Kv * 0.5f * volumeStrain * normal;
+__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float sa0, float Ka){
+  int NUM_FACES = 320; //number of faces
+  int NUM_VERTICES = 162; //number of vertices
+  
+  int ci  = get_global_id(0); //cell index
+  int fi  = get_global_id(1); //face index at that cell
+  
+  int face_index = ci * NCELLS + fi;
+  uint4 vert_indicies = VertIdxMat[face_index];
+
+  float4 pos0 = Verts[vert_indicies[0]];
+  float4 pos1 = Verts[vert_indicies[1]];
+  float4 pos2 = Verts[vert_indicies[2]];
+}
+
+__kernel void UpdatePosition(__global float4* Verts, __global float4* Forces, int NCELLS ,float dt){
+  int ci = get_global_id(0);
+  int vi = get_global_id(1);
+
+  int vert_index = ci * NCELLS + vi;
+  Verts[vert_index] += Forces[vert_index] * dt;
 }

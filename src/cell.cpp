@@ -154,7 +154,7 @@ namespace DPM{
     return i;
   }
 
-  void Cell3D::VolumeForceUpdate(){
+  void Cell3D::CLShapeEuler(int nsteps, float dt){
     int NCELLS = 1;
     std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
 
@@ -176,19 +176,39 @@ namespace DPM{
     cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Verts.data());
     cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Forces.data());
 
-    cl::Kernel kernel(program,"VolumeForceUpdate");
-    kernel.setArg(0, gpuFaces);
-    kernel.setArg(1, gpuVerts);
-    kernel.setArg(2, gpuForces);
-    kernel.setArg(3, NCELLS);
-    kernel.setArg(4, v0);
-    kernel.setArg(5, Kb);
+    cl::Kernel VolumeUpdateKernel(program,"VolumeForceUpdate");
+    VolumeUpdateKernel.setArg(0, gpuFaces);
+    VolumeUpdateKernel.setArg(1, gpuVerts);
+    VolumeUpdateKernel.setArg(2, gpuForces);
+    VolumeUpdateKernel.setArg(3, NCELLS);
+    VolumeUpdateKernel.setArg(4, v0);
+    VolumeUpdateKernel.setArg(5, Kb);
+
+    cl::Kernel SurfaceAreaUpdateKernel(program,"SurfaceAreaForceUpdate");
+    SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
+    SurfaceAreaUpdateKernel.setArg(1, gpuVerts);
+    SurfaceAreaUpdateKernel.setArg(2, gpuForces);
+    SurfaceAreaUpdateKernel.setArg(3, NCELLS);
+    SurfaceAreaUpdateKernel.setArg(4, s0);
+    SurfaceAreaUpdateKernel.setArg(5, Ka);
+
+    cl::Kernel EulerUpdate(program,"EulerPosition");
+    EulerUpdate.setArg(0, gpuVerts);
+    EulerUpdate.setArg(1, gpuForces);
+    EulerUpdate.setArg(2, NCELLS);
+    EulerUpdate.setArg(3, dt);
 
     cl::NDRange globalSize(NCELLS,NF);
     cl::CommandQueue queue(context,device);
 
-    queue.enqueueNDRangeKernel(kernel,cl::NullRange, globalSize);
-    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Verts.data());
+    for(int step=0;step<nsteps;step++){
+      queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
+      queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
+      queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NCELLS,NV));
+    }
+
+
+    queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Forces.data());
 
 
     std::cout << Forces[0][0] << " "<<  Forces[0][1] <<  " " <<Forces[0][2] << std::endl;
