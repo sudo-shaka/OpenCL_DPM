@@ -170,6 +170,7 @@ namespace DPM{
     if(err != CL_SUCCESS){
       std::cerr <<"kernel compilation failed:\n";
       std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
+      exit(0);
     }
 
     cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NF, Faces.data());
