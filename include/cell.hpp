@@ -52,9 +52,9 @@ namespace DPM{
     int NF; //number of  faces
     float Volume;
     float SurfaceArea;
-    std::vector<std::array<float,3>> Verts;
-    std::vector<std::array<float,3>> Forces;
-    std::vector<std::array<int,3>> Faces;
+    std::vector<std::array<float,4>> Verts;
+    std::vector<std::array<float,4>> Forces;
+    std::vector<std::array<int,4>> Faces;
     std::vector<std::vector<int>> midpointCache;
     float l0;
     Cell3D(std::array<float,3> starting_point, float CalA0, float r0);

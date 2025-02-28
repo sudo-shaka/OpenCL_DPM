@@ -7,9 +7,8 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <iostream>
 #include "cell.hpp"
-
-#define NV3D = 162
 
 std::string readKernelSource(const std::string& filename){
   std::ifstream file(filename);
@@ -32,71 +31,71 @@ namespace DPM{
     Kb = 0.0f;
     NV = 12;
     Verts.resize(NV);
-    float t = (1+sqrt(5)) / 2;
-    Verts[0] = {-1,t,0};
-    Verts[0] = {-1, t, 0};
-    Verts[1] = { 1,  t,  0};
-    Verts[2] = {-1, -t,  0};
-    Verts[3] = { 1, -t,  0};
+    float t = (1+sqrt(5)) / 2; //only need first 3, 0 at end is padded for GPU float4
+    Verts[0] = {-1,  t, 0, 0};
+    Verts[0] = {-1,  t, 0, 0};
+    Verts[1] = { 1,  t, 0, 0};
+    Verts[2] = {-1, -t, 0, 0};
+    Verts[3] = { 1, -t, 0, 0};
 
-    Verts[4] = { 0, -1,  t};
-    Verts[5] = { 0,  1,  t};
-    Verts[6] = { 0, -1, -t};
-    Verts[7] = { 0,  1, -t};
+    Verts[4] = { 0, -1,  t, 0};
+    Verts[5] = { 0,  1,  t, 0};
+    Verts[6] = { 0, -1, -t, 0};
+    Verts[7] = { 0,  1, -t, 0};
 
-    Verts[8] = { t,  0, -1};
-    Verts[9] = { t,  0,  1};
-    Verts[10] = {-t,  0, -1};
-    Verts[11] = {-t,  0,  1};
+    Verts[8] = { t,  0, -1, 0};
+    Verts[9] = { t,  0,  1, 0};
+    Verts[10] = {-t,  0, -1, 0};
+    Verts[11] = {-t,  0,  1, 0};
     for(int i=0;i<NV;i++){
       float norm = std::sqrt(Verts[i][0] * Verts[i][0] + Verts[i][1] * Verts[i][1] + Verts[i][2] * Verts[i][2]);
       Verts[i][0] /= norm;
       Verts[i][1] /= norm;
       Verts[i][2] /= norm;
     }
-    Faces.push_back(std::array<int,3>{0,11,5});
-    Faces.push_back(std::array<int,3>{0,5,1});
-    Faces.push_back(std::array<int,3>{0, 1, 7});
-    Faces.push_back(std::array<int,3>{0, 7, 10});
-    Faces.push_back(std::array<int,3>{0, 10, 11});
+    Faces.push_back(std::array<int,4>{0,11,5,0});
+    Faces.push_back(std::array<int,4>{0,5,1,0});
+    Faces.push_back(std::array<int,4>{0, 1, 7,0});
+    Faces.push_back(std::array<int,4>{0, 7, 10, 0});
+    Faces.push_back(std::array<int,4>{0, 10, 11,0});
 
     // 5 adjacent faces
-    Faces.push_back(std::array<int,3>{1, 5, 9});
-    Faces.push_back(std::array<int,3>{5, 11, 4});
-    Faces.push_back(std::array<int,3>{11, 10, 2});
-    Faces.push_back(std::array<int,3>{10, 7, 6});
-    Faces.push_back(std::array<int,3>{7, 1, 8});
+    Faces.push_back(std::array<int,4>{1, 5, 9, 0});
+    Faces.push_back(std::array<int,4>{5, 11, 4, 0});
+    Faces.push_back(std::array<int,4>{11, 10, 2, 0});
+    Faces.push_back(std::array<int,4>{10, 7, 6, 0});
+    Faces.push_back(std::array<int,4>{7, 1, 8, 0});
 
     // 5 faces around point 3
-    Faces.push_back(std::array<int,3>{3, 9, 4});
-    Faces.push_back(std::array<int,3>{3, 4, 2});
-    Faces.push_back(std::array<int,3>{3, 2, 6});
-    Faces.push_back(std::array<int,3>{3, 6, 8});
-    Faces.push_back(std::array<int,3>{3, 8, 9});
+    Faces.push_back(std::array<int,4>{3, 9, 4, 0});
+    Faces.push_back(std::array<int,4>{3, 4, 2, 0});
+    Faces.push_back(std::array<int,4>{3, 2, 6, 0});
+    Faces.push_back(std::array<int,4>{3, 6, 8, 0});
+    Faces.push_back(std::array<int,4>{3, 8, 9, 0});
 
     // 5 adjacent faces
-    Faces.push_back(std::array<int,3>{4, 9, 5});
-    Faces.push_back(std::array<int,3>{2, 4, 11});
-    Faces.push_back(std::array<int,3>{6, 2, 10});
-    Faces.push_back(std::array<int,3>{8, 6, 7});
-    Faces.push_back(std::array<int,3>{9, 8, 1});
+    Faces.push_back(std::array<int,4>{4, 9, 5, 0});
+    Faces.push_back(std::array<int,4>{2, 4, 11, 0});
+    Faces.push_back(std::array<int,4>{6, 2, 10, 0});
+    Faces.push_back(std::array<int,4>{8, 6, 7, 0});
+    Faces.push_back(std::array<int,4>{9, 8, 1, 0});
 
-    std::array<int,3> newF;
-    std::vector<std::array<int,3>> newFaces;
+    std::array<int,4> newF;
+    std::vector<std::array<int,4>> newFaces;
     int f = 2;
     for(int i=0; i < f; i++){
       int steps = Faces.size();
       for(int j=0; j < steps; j++){
-        int a = Cell3D::AddMiddlePoint(Faces[j][0], Faces[j][1]); 
-        int b = Cell3D::AddMiddlePoint(Faces[j][1], Faces[j][2]); 
-        int c = Cell3D::AddMiddlePoint(Faces[j][2], Faces[j][0]); 
-        newF = {Faces[j][0],a,c};
+        int a = Cell3D::AddMiddlePoint(Faces[j][0], Faces[j][1]);
+        int b = Cell3D::AddMiddlePoint(Faces[j][1], Faces[j][2]);
+        int c = Cell3D::AddMiddlePoint(Faces[j][2], Faces[j][0]);
+        newF = {Faces[j][0],a,c,0};
         newFaces.push_back(newF);
-        newF = {Faces[j][1],b,a};
+        newF = {Faces[j][1],b,a,0};
         newFaces.push_back(newF);
-        newF = {Faces[j][2],c,b};
+        newF = {Faces[j][2],c,b,0};
         newFaces.push_back(newF);
-        newF = {a,b,c};
+        newF = {a,b,c,0};
         newFaces.push_back(newF);
       }
       Faces = newFaces;
@@ -105,6 +104,19 @@ namespace DPM{
     }
     NV = (int)Verts.size();
     Forces.resize(NV);
+    for(int vi=0;vi<NV;vi++){
+      Verts[vi][0] *= r0;
+      Verts[vi][1] *= r0;
+      Verts[vi][2] *= r0;
+      Verts[vi][0] += starting_point[0];
+      Verts[vi][1] += starting_point[1];
+      Verts[vi][2] += starting_point[2];
+      Forces[vi] = {0,0,0,0};
+    }
+    NF = (int)Faces.size();
+    v0 = (4.0f/3.0f) * M_PI *pow(r0,3);
+    s0 = pow((6*sqrt(M_PI)*v0*calA),(2.0f/3.0f));
+    a0 = (s0/(float)NF);
   }
 
   int Cell3D::AddMiddlePoint(int p1, int p2){
@@ -120,18 +132,19 @@ namespace DPM{
             return midpointCache[i][1];
     }
 
-    std::array<float,3> vert1 = Verts[p2], vert2 = Verts[p1];
-    std::array<float,3> middlePoint;
+    std::array<float,4> vert1 = Verts[p2], vert2 = Verts[p1];
+    std::array<float,4> middlePoint;
     for(int i=0;i<3;i++){
       middlePoint[i] = vert1[i] + vert2[i];
       middlePoint[i] *= 0.5;
     }
     for(int i=0;i<3;i++){
-      float norm = std::sqrt(middlePoint[0] * middlePoint[0] 
-          + middlePoint[1] * middlePoint[1] 
+      float norm = std::sqrt(middlePoint[0] * middlePoint[0]
+          + middlePoint[1] * middlePoint[1]
           + middlePoint[2] * middlePoint[2]);
       middlePoint[i] /=  norm;
     }
+    middlePoint[3] = 0;
     Verts.push_back(middlePoint);
     i = Verts.size()-1;
     std::vector<int> cache; cache.resize(2);
@@ -142,6 +155,7 @@ namespace DPM{
   }
 
   void Cell3D::VolumeForceUpdate(){
+    int NCELLS = 1;
     std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
 
     // OpenCL Setup
@@ -151,36 +165,32 @@ namespace DPM{
 
     // Compile the kernel
     cl::Program program(context, kernelSource);
-    program.build({device});
 
+    cl_int err = program.build({device},"-cl-opt-disable -Werror");
+    if(err != CL_SUCCESS){
+      std::cerr <<"kernel compilation failed:\n";
+      std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
+    }
 
+    cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NF, Faces.data());
+    cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Verts.data());
+    cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Forces.data());
 
-    // Buffers
-/*    cl::Buffer bufferA(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * N * N, A.data());
-    cl::Buffer bufferB(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * N * N, B.data());
-    cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeof(float) * N * N);
+    cl::Kernel kernel(program,"VolumeForceUpdate");
+    kernel.setArg(0, gpuFaces);
+    kernel.setArg(1, gpuVerts);
+    kernel.setArg(2, gpuForces);
+    kernel.setArg(3, NCELLS);
+    kernel.setArg(4, v0);
+    kernel.setArg(5, Kb);
 
-    // Create Kernel
-    cl::Kernel kernel(program, "VolumeForceUpdate3D");
-    kernel.setArg(0, bufferA);
-    kernel.setArg(1, bufferB);
-    kernel.setArg(2, bufferC);
-    kernel.setArg(3, N);
+    cl::NDRange globalSize(NCELLS,NF);
+    cl::CommandQueue queue(context,device);
 
-    // Command Queue
-    cl::CommandQueue queue(context, device);
-    cl::NDRange globalSize(N, N);
-    queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize);
-    queue.enqueueReadBuffer(bufferC, CL_TRUE, 0, sizeof(float) * N * N, C.data());
+    queue.enqueueNDRangeKernel(kernel,cl::NullRange, globalSize);
+    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Verts.data());
 
-    // Print Result
-    std::cout << "Result Matrix C:" << std::endl;
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            std::cout << C[i * N + j] << " ";
-        }
-        std::cout << std::endl;
-    }*/
+    std::cout << Verts[0][0] << " "<<  Verts[0][1] <<  " " <<Verts[0][2] << std::endl;
   }
 }
 
