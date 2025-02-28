@@ -190,7 +190,8 @@ namespace DPM{
     queue.enqueueNDRangeKernel(kernel,cl::NullRange, globalSize);
     queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Verts.data());
 
-    std::cout << Verts[0][0] << " "<<  Verts[0][1] <<  " " <<Verts[0][2] << std::endl;
+
+    std::cout << Forces[0][0] << " "<<  Forces[0][1] <<  " " <<Forces[0][2] << std::endl;
   }
 }
 

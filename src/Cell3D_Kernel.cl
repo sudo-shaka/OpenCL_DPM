@@ -42,7 +42,7 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   if (determinate < 0.0){
     determinate = -determinate;
   }
-  __local float local_volume_sum[NUM_FACES];
+  __local float local_volume_sum[320];
   local_volume_sum[fi] = determinate;
 
   barrier(CLK_LOCAL_MEM_FENCE);
