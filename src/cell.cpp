@@ -155,7 +155,7 @@ namespace DPM{
   void Cell3D::CLShapeEuler(int nsteps, float dt){
     int NCELLS = 1;
     float l0 = sqrt((4.0*a0)/sqrt(3.0));
-    std::string kernelSource  = readKernelSource("/home/shaka/Code/C++/OpenCL_DPM/src/Cell3D_Kernel.cl");
+    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
 
     // OpenCL Setup
     cl::Platform platform = cl::Platform::getDefault();
