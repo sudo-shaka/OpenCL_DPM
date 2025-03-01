@@ -1,4 +1,5 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 300
+#include <CL/cl.h>
 #include <cmath>
 #include <vector>
 #include <array>
@@ -180,31 +181,37 @@ namespace DPM{
     cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NF, Faces.data());
     cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Verts.data());
     cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Forces.data());
+    cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Kv);
+    cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Ka);
+    cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Ks);
+    cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &v0);
+    cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &a0);
+    cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &l0);
 
     cl::Kernel VolumeUpdateKernel(program,"VolumeForceUpdate");
     VolumeUpdateKernel.setArg(0, gpuFaces);
     VolumeUpdateKernel.setArg(1, gpuVerts);
     VolumeUpdateKernel.setArg(2, gpuForces);
     VolumeUpdateKernel.setArg(3, NCELLS);
-    VolumeUpdateKernel.setArg(4, Kv);
-    VolumeUpdateKernel.setArg(5, v0);
+    VolumeUpdateKernel.setArg(4, gpuKv);
+    VolumeUpdateKernel.setArg(5, gpuv0);
 
     cl::Kernel SurfaceAreaUpdateKernel(program,"SurfaceAreaForceUpdate");
     SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
     SurfaceAreaUpdateKernel.setArg(1, gpuVerts);
     SurfaceAreaUpdateKernel.setArg(2, gpuForces);
     SurfaceAreaUpdateKernel.setArg(3, NCELLS);
-    SurfaceAreaUpdateKernel.setArg(4, Ka);
-    SurfaceAreaUpdateKernel.setArg(5, l0);
+    SurfaceAreaUpdateKernel.setArg(4, gpuKa);
+    SurfaceAreaUpdateKernel.setArg(5, gpul0);
 
     cl::Kernel StickToSurfaceUpdate(program,"StickToSurface");
     StickToSurfaceUpdate.setArg(0, gpuFaces);
     StickToSurfaceUpdate.setArg(1, gpuVerts);
     StickToSurfaceUpdate.setArg(2, gpuForces);
     StickToSurfaceUpdate.setArg(3, NCELLS);
-    StickToSurfaceUpdate.setArg(4, Ks);
-    StickToSurfaceUpdate.setArg(5, a0);
-    StickToSurfaceUpdate.setArg(6, l0);
+    StickToSurfaceUpdate.setArg(4, gpuKs);
+    StickToSurfaceUpdate.setArg(5, gpua0);
+    StickToSurfaceUpdate.setArg(6, gpul0);
 
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);

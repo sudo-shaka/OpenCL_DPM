@@ -22,7 +22,7 @@ float4 GetCOM(__global float4* Verts ,int ci){
   return COM/NUM_VERTICES;
 }
 
-__kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float Kv, float v0){
+__kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, __global float* Kv, __global float* v0){
 
   /*data is structred like
       cell1, cell2, cell3, cell4, ...
@@ -46,10 +46,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float volume = 0.0f;
   for(uint cifi=ci*NUM_VERTICES;cifi<ci*NCELLS+NUM_FACES;cifi++){
     uint4 face = VertIdxMat[cifi];
-    float4 v0  = Verts[face[0]]; 
-    float4 v1  = Verts[face[1]]; 
-    float4 v2  = Verts[face[2]]; 
-    float volumepart =  dot(cross(v1,v2),v0);
+    float4 vert0  = Verts[face[0]]; 
+    float4 vert1  = Verts[face[1]]; 
+    float4 vert2  = Verts[face[2]]; 
+    float volumepart =  dot(cross(vert1,vert2),vert0);
     if(volumepart < 0){
       volumepart *= -1;
     }
@@ -61,7 +61,7 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // Calculate the volume strain
-  float volumeStrain = (volume / v0) - 1.0;
+  float volumeStrain = (volume / v0[ci]) - 1.0;
 
   // Initialize force vectors for the vertices
   float4 force0 = (float4)(0.0f);
@@ -74,12 +74,12 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float4 normal = normalize(cross(A, B));
 
   // Update the forces acting on the vertices based on the volume strain
-  Forces[vert_indicies[0]] -= Kv * 1.0f / 3.0f * volumeStrain * normal;
-  Forces[vert_indicies[1]] -= Kv * 1.0f / 3.0f * volumeStrain * normal;
-  Forces[vert_indicies[2]] -= Kv * 1.0f / 3.0f * volumeStrain * normal;
+  Forces[vert_indicies[0]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
+  Forces[vert_indicies[1]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
+  Forces[vert_indicies[2]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
 }
 
-__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, float Ka, float l0){
+__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ka, __global float* l0){
   uint ci  = get_global_id(0); //cell index
   uint fi  = get_global_id(1); //face index at that cell
 
@@ -102,16 +102,16 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   float4 ulv2 = lv2 / lengths[2];
 
   // Calculate the length strain for each edge
-  float4 dli = (float4)(lengths[0]/l0 - 1.0, lengths[1]/l0 - 1.0, lengths[2]/l0 - 1.0, 0.0);
+  float4 dli = (float4)(lengths[0]/l0[ci] - 1.0, lengths[1]/l0[ci] - 1.0, lengths[2]/l0[ci] - 1.0, 0.0);
 
   // Calculate the force contributions for each vertex
   float third = 1.0 / 3.0;
-  Forces[vert_indicies[0]] += third * Ka * (dli[0] * ulv0 - dli[2] * ulv2);
-  Forces[vert_indicies[1]] += third * Ka * (dli[1] * ulv1 - dli[0] * ulv0);
-  Forces[vert_indicies[2]] += third * Ka * (dli[2] * ulv2 - dli[1] * ulv1);
+  Forces[vert_indicies[0]] += third * Ka[ci] * (dli[0] * ulv0 - dli[2] * ulv2);
+  Forces[vert_indicies[1]] += third * Ka[ci] * (dli[1] * ulv1 - dli[0] * ulv0);
+  Forces[vert_indicies[2]] += third * Ka[ci] * (dli[2] * ulv2 - dli[1] * ulv1);
 }
 
-__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, float Ks, float l0){
+__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
   uint face_index = ci * NCELLS + fi;
@@ -132,29 +132,29 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   int4 isunder = (int4)(0,0,0,0);
 
   if(pos0[2] < 0.0f){
-    Forces[vert_indicies[0]][2] -= Ks * (pos0[2]/l0) * (1.0f/3.0f);
+    Forces[vert_indicies[0]][2] -= Ks[ci] * (pos0[2]/l0[ci]) * (1.0f/3.0f);
     isunder[0] = 1;
 }
   if(pos1[2] < 0.0f){
-    Forces[vert_indicies[1]][2] -= Ks * (pos1[2]/l0) * (1.0f/3.0f);
+    Forces[vert_indicies[1]][2] -= Ks[ci] * (pos1[2]/l0[ci]) * (1.0f/3.0f);
     isunder[1] = 1;
   }
   if(pos2[2] < 0.0f){
-    Forces[vert_indicies[2]][2] -= Ks * (pos2[2]/l0) * (1.0f/3.0f);
+    Forces[vert_indicies[2]][2] -= Ks[ci] * (pos2[2]/l0[ci]) * (1.0f/3.0f);
     isunder[2] = 1;
   }
 
   float4 COM = GetCOM(Verts, ci);
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  if(isnormal && !isunder[0] && pos0[2] < l0){
-    Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks * ((1.0f - pos0[2])/l0) * normalize(surfacePoint0 - COM);
+  if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
+    Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos0[2])/l0[ci]) * normalize(surfacePoint0 - COM);
   }
-  if(isnormal && !isunder[1] && pos1[2] < l0){
-    Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks * ((1.0f - pos1[2])/l0) * normalize(surfacePoint1 - COM);
+  if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
+    Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos1[2])/l0[ci]) * normalize(surfacePoint1 - COM);
   }
-  if(isnormal && !isunder[2] && pos2[2] < l0){
-    Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks * ((1.0f - pos2[2])/l0) * normalize(surfacePoint2 - COM);
+  if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
+    Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos2[2])/l0[ci]) * normalize(surfacePoint2 - COM);
   }
 
   
