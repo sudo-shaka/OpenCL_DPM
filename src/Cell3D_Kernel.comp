@@ -11,10 +11,8 @@
   int NUM_VERTICIES = 162; //number of vertices
 */
 
-const int NUM_FACES = 320;
-const int NUM_VERTICES = 162;
-float volume_sum[NUM_FACES];
-float4 position_sum[NUM_VERTICES];
+constant uint NUM_FACES = 320;
+constant uint NUM_VERTICES = 162;
 
 float4 GetCOM(__global float4* Verts ,int ci){
   float4 COM = (float4)(0.0f,0.0f,0.0f,0.0f);
@@ -33,10 +31,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
     f3
     ...
   */
-  int ci  = get_global_id(0); //cell index
-  int fi  = get_global_id(1); //face index at that cell
+  uint ci  = get_global_id(0); //cell index
+  uint fi  = get_global_id(1); //face index at that cell
 
-  int face_index = ci * NCELLS + fi;
+  uint face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
   // Get the positions of the vertices of the current face
   float4 pos0 = Verts[vert_indicies[0]];
@@ -44,17 +42,21 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float4 pos2 = Verts[vert_indicies[2]];
 
   // Calculate the volume contribution of the current face using the scalar triple product
-  volume_sum[fi] = (dot(cross(pos1, pos2), pos0));
-  if (volume_sum[fi] < 0)
-    volume_sum[fi] *= -1; // Ensure the volume contribution is positive
-
   barrier(CLK_LOCAL_MEM_FENCE);
-
-  // Sum up the volume contributions from all faces
-  float volume = 0.0;
-  for (int i = 0; i < NUM_FACES; i++) {
-    volume += volume_sum[i] / 6;
+  float volume = 0.0f;
+  for(uint cifi=ci*NUM_VERTICES;cifi<ci*NCELLS+NUM_FACES;cifi++){
+    uint4 face = VertIdxMat[cifi];
+    float4 v0  = Verts[face[0]]; 
+    float4 v1  = Verts[face[1]]; 
+    float4 v2  = Verts[face[2]]; 
+    float volumepart =  dot(cross(v1,v2),v0);
+    if(volumepart < 0){
+      volumepart *= -1;
+    }
+    volume+=volumepart;
   }
+
+  volume /= 6.0f;
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -77,11 +79,11 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   Forces[vert_indicies[2]] -= Kv * 1.0f / 3.0f * volumeStrain * normal;
 }
 
-__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float Ka, float l0){
-  int ci  = get_global_id(0); //cell index
-  int fi  = get_global_id(1); //face index at that cell
+__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, float Ka, float l0){
+  uint ci  = get_global_id(0); //cell index
+  uint fi  = get_global_id(1); //face index at that cell
 
-  int face_index = ci * NCELLS + fi;
+  uint face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
 
   float4 pos0 = Verts[vert_indicies[0]];
@@ -109,10 +111,10 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   Forces[vert_indicies[2]] += third * Ka * (dli[2] * ulv2 - dli[1] * ulv1);
 }
 
-__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, int NCELLS, float Ks, float l0){
-  int ci = get_global_id(0);
-  int fi = get_global_id(1);
-  int face_index = ci * NCELLS + fi;
+__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, float Ks, float l0){
+  uint ci = get_global_id(0);
+  uint fi = get_global_id(1);
+  uint face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
 
   float4 pos0 = Verts[vert_indicies[0]];
@@ -158,11 +160,11 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   
 }
 
-__kernel void EulerPosition(__global float4* Verts, __global float4* Forces, int NCELLS ,float dt){
-  int ci = get_global_id(0);
-  int vi = get_global_id(1);
+__kernel void EulerPosition(__global float4* Verts, __global float4* Forces, uint NCELLS ,float dt){
+  uint ci = get_global_id(0);
+  uint vi = get_global_id(1);
 
-  int vert_index = ci * NCELLS + vi;
+  uint vert_index = ci * NCELLS + vi;
   Verts[vert_index] += Forces[vert_index] * dt;
   Forces[vert_index] = (float4)(0.0f);
 }

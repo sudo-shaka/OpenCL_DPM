@@ -5,7 +5,7 @@
 #define __CELL__
 namespace DPM{
   struct Cell2D{
-    int NV;
+    unsigned int NV;
     float calA0;
     float l0;
     float r0;
@@ -40,9 +40,9 @@ namespace DPM{
   };
   class Cell3D{
     public:
-    static const int NV = 162;
-    static const int NF = 320;
-    int calA0;
+    static const unsigned int NV = 162;
+    static const unsigned int NF = 320;
+    float calA0;
     float r0;
     float v0;
     float sa0;
@@ -54,17 +54,18 @@ namespace DPM{
     float SurfaceArea;
     std::vector<std::array<float,4>> Verts;
     std::vector<std::array<float,4>> Forces;
-    std::vector<std::array<int,4>> Faces;
-    void CLShapeEuler(int nsteps, float dt);
+    std::vector<std::array<unsigned int,4>> Faces;
+    void CLShapeEuler(unsigned int nsteps, float dt);
     float GetVolume();
     float GetSurfaceArea();
     std::array<std::array<float,NV>,3> GetPositions();
     std::array<std::array<float,NV>,3> GetForces();
+    std::array<float,3>  GetCOM();
     Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
     
     private:
     std::vector<std::vector<int>> midpointCache;
-    int AddMiddlePoint(int p1, int p2);
+    unsigned int AddMiddlePoint(unsigned int p1, unsigned int p2);
   };
 }
 

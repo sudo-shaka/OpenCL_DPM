@@ -51,42 +51,42 @@ namespace DPM{
       Verts[i][1] /= norm;
       Verts[i][2] /= norm;
     }
-    Faces.push_back(std::array<int,4>{0,11,5,0});
-    Faces.push_back(std::array<int,4>{0,5,1,0});
-    Faces.push_back(std::array<int,4>{0, 1, 7,0});
-    Faces.push_back(std::array<int,4>{0, 7, 10, 0});
-    Faces.push_back(std::array<int,4>{0, 10, 11,0});
+    Faces.push_back(std::array<unsigned int,4>{0,11,5,0});
+    Faces.push_back(std::array<unsigned int,4>{0,5,1,0});
+    Faces.push_back(std::array<unsigned int,4>{0, 1, 7,0});
+    Faces.push_back(std::array<unsigned int,4>{0, 7, 10, 0});
+    Faces.push_back(std::array<unsigned int,4>{0, 10, 11,0});
 
     // 5 adjacent faces
-    Faces.push_back(std::array<int,4>{1, 5, 9, 0});
-    Faces.push_back(std::array<int,4>{5, 11, 4, 0});
-    Faces.push_back(std::array<int,4>{11, 10, 2, 0});
-    Faces.push_back(std::array<int,4>{10, 7, 6, 0});
-    Faces.push_back(std::array<int,4>{7, 1, 8, 0});
+    Faces.push_back(std::array<unsigned int,4>{1, 5, 9, 0});
+    Faces.push_back(std::array<unsigned int,4>{5, 11, 4, 0});
+    Faces.push_back(std::array<unsigned int,4>{11, 10, 2, 0});
+    Faces.push_back(std::array<unsigned int,4>{10, 7, 6, 0});
+    Faces.push_back(std::array<unsigned int,4>{7, 1, 8, 0});
 
     // 5 faces around point 3
-    Faces.push_back(std::array<int,4>{3, 9, 4, 0});
-    Faces.push_back(std::array<int,4>{3, 4, 2, 0});
-    Faces.push_back(std::array<int,4>{3, 2, 6, 0});
-    Faces.push_back(std::array<int,4>{3, 6, 8, 0});
-    Faces.push_back(std::array<int,4>{3, 8, 9, 0});
+    Faces.push_back(std::array<unsigned int,4>{3, 9, 4, 0});
+    Faces.push_back(std::array<unsigned int,4>{3, 4, 2, 0});
+    Faces.push_back(std::array<unsigned int,4>{3, 2, 6, 0});
+    Faces.push_back(std::array<unsigned int,4>{3, 6, 8, 0});
+    Faces.push_back(std::array<unsigned int,4>{3, 8, 9, 0});
 
     // 5 adjacent faces
-    Faces.push_back(std::array<int,4>{4, 9, 5, 0});
-    Faces.push_back(std::array<int,4>{2, 4, 11, 0});
-    Faces.push_back(std::array<int,4>{6, 2, 10, 0});
-    Faces.push_back(std::array<int,4>{8, 6, 7, 0});
-    Faces.push_back(std::array<int,4>{9, 8, 1, 0});
+    Faces.push_back(std::array<unsigned int,4>{4, 9, 5, 0});
+    Faces.push_back(std::array<unsigned int,4>{2, 4, 11, 0});
+    Faces.push_back(std::array<unsigned int,4>{6, 2, 10, 0});
+    Faces.push_back(std::array<unsigned int,4>{8, 6, 7, 0});
+    Faces.push_back(std::array<unsigned int,4>{9, 8, 1, 0});
 
-    std::array<int,4> newF;
-    std::vector<std::array<int,4>> newFaces;
-    int f = 2;
-    for(int i=0; i < f; i++){
-      int steps = Faces.size();
-      for(int j=0; j < steps; j++){
-        int a = Cell3D::AddMiddlePoint(Faces[j][0], Faces[j][1]);
-        int b = Cell3D::AddMiddlePoint(Faces[j][1], Faces[j][2]);
-        int c = Cell3D::AddMiddlePoint(Faces[j][2], Faces[j][0]);
+    std::array<unsigned int,4> newF;
+    std::vector<std::array<unsigned int,4>> newFaces;
+    unsigned int f = 2;
+    for(unsigned int i=0; i < f; i++){
+      unsigned int steps = Faces.size();
+      for(unsigned int j=0; j < steps; j++){
+        unsigned int a = Cell3D::AddMiddlePoint(Faces[j][0], Faces[j][1]);
+        unsigned int b = Cell3D::AddMiddlePoint(Faces[j][1], Faces[j][2]);
+        unsigned int c = Cell3D::AddMiddlePoint(Faces[j][2], Faces[j][0]);
         newF = {Faces[j][0],a,c,0};
         newFaces.push_back(newF);
         newF = {Faces[j][1],b,a,0};
@@ -101,7 +101,7 @@ namespace DPM{
       newFaces.shrink_to_fit();
     }
     Forces.resize(NV);
-    for(int vi=0;vi<NV;vi++){
+    for(unsigned int vi=0;vi<NV;vi++){
       Verts[vi][0] *= r0;
       Verts[vi][1] *= r0;
       Verts[vi][2] *= r0;
@@ -117,7 +117,7 @@ namespace DPM{
     SurfaceArea = GetSurfaceArea();
   }
 
-  int Cell3D::AddMiddlePoint(int p1, int p2){
+  unsigned int Cell3D::AddMiddlePoint(unsigned int p1,unsigned int p2){
     int key; int i;
     if(p1 < p2){
         key = floor((p1+p2) * (p1+p2+1)/2) + p1;
@@ -126,7 +126,7 @@ namespace DPM{
         key = floor((p1+p2) * (p1+p2+1)/2) + p2;
     }
     for(i=0;i<(int)midpointCache.size();i++){
-        if(key == midpointCache[i][0])
+        if(key == (int)midpointCache[i][0])
             return midpointCache[i][1];
     }
 
@@ -152,10 +152,10 @@ namespace DPM{
     return i;
   }
 
-  void Cell3D::CLShapeEuler(int nsteps, float dt){
+  void Cell3D::CLShapeEuler(unsigned int nsteps, float dt){
     int NCELLS = 1;
     float l0 = sqrt((4.0*a0)/sqrt(3.0));
-    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
+    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.comp");
 
     // OpenCL Setup
     cl::Platform platform = cl::Platform::getDefault();
@@ -167,7 +167,12 @@ namespace DPM{
 
     cl_int err = program.build({device},"-cl-opt-disable -Werror");
     if(err != CL_SUCCESS){
-      std::cerr <<"kernel compilation failed:\n";
+      std::cerr <<"ERR: "  <<  CL_SUCCESS  << " : " << "kernel compilation failed:\n";
+      std::string version = device.getInfo<CL_DEVICE_VERSION>();
+      std::cerr << "OpenCL version:" << version << "\n";
+      std::cerr << "platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+      std::cerr << "device:  " << device.getInfo<CL_DEVICE_NAME>() << "\n";
+      std::cerr << "driver version: " << device.getInfo<CL_DRIVER_VERSION>() << "\n";
       std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
       exit(0);
     }
@@ -210,7 +215,7 @@ namespace DPM{
     cl::NDRange globalSize(NCELLS,NF);
     cl::CommandQueue queue(context,device);
 
-    for(int step=0;step<nsteps;step++){
+    for(unsigned int step=0;step<nsteps;step++){
       if(Kv != 0.0){
         queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
       }
@@ -267,7 +272,7 @@ namespace DPM{
 
   std::array<std::array<float,162>,3> Cell3D::GetPositions(){
     std::array<std::array<float,NV>,3> positions;
-    for(int i=0;i<NV;i++){
+    for(unsigned int i=0;i<NV;i++){
       positions[0][i] = Verts[i][0];
       positions[1][i] = Verts[i][1];
       positions[2][i] = Verts[i][2];
@@ -277,12 +282,26 @@ namespace DPM{
 
   std::array<std::array<float,162>,3> Cell3D::GetForces(){
     std::array<std::array<float,NV>,3> forces;
-    for(int i=0;i<NV;i++){
+    for(unsigned int i=0;i<NV;i++){
       forces[0][i] = Forces[i][0];
       forces[1][i] = Forces[i][1];
       forces[2][i] = Forces[i][2];
     }
     return forces;
+  }
+
+  std::array<float,3> Cell3D::GetCOM(){
+    std::array<float,3>  com = {0.0,0.0,0.0};
+    for(unsigned int vi=0;vi<NV;vi++){
+      com[0] += Verts[vi][0];
+      com[1] += Verts[vi][1];
+      com[2] += Verts[vi][2];
+    }
+    com[0] /= (float)NV;
+    com[1] /= (float)NV;
+    com[2] /= (float)NV;
+
+    return com;
   }
 
 }
