@@ -38,28 +38,33 @@ namespace DPM{
     void UpdateDirectorDiffusion(float dt);
     float GetArea();
   };
-  struct Cell3D{
-    int NV;
+  class Cell3D{
+    public:
+    static const int NV = 162;
+    static const int NF = 320;
     int calA0;
     float r0;
     float v0;
+    float sa0;
     float a0;
-    float s0;
     float Kv;
     float Ka;
-    float Kb;
     float Ks;
-    int NF; //number of  faces
     float Volume;
     float SurfaceArea;
     std::vector<std::array<float,4>> Verts;
     std::vector<std::array<float,4>> Forces;
     std::vector<std::array<int,4>> Faces;
-    std::vector<std::vector<int>> midpointCache;
-    float l0;
-    Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
-    int AddMiddlePoint(int p1, int p2);
     void CLShapeEuler(int nsteps, float dt);
+    float GetVolume();
+    float GetSurfaceArea();
+    std::array<std::array<float,NV>,3> GetPositions();
+    std::array<std::array<float,NV>,3> GetForces();
+    Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
+    
+    private:
+    std::vector<std::vector<int>> midpointCache;
+    int AddMiddlePoint(int p1, int p2);
   };
 }
 

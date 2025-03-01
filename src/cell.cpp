@@ -28,9 +28,7 @@ namespace DPM{
     r0 = _r0;
     Kv = 0.0f;
     Ka = 0.0f;
-    Kb = 0.0f;
-    NV = 12;
-    Verts.resize(NV);
+    Verts.resize(12);
     float t = (1+sqrt(5)) / 2; //only need first 3, 0 at end is padded for GPU float4
     Verts[0] = {-1,  t, 0, 0};
     Verts[0] = {-1,  t, 0, 0};
@@ -47,7 +45,7 @@ namespace DPM{
     Verts[9] = { t,  0,  1, 0};
     Verts[10] = {-t,  0, -1, 0};
     Verts[11] = {-t,  0,  1, 0};
-    for(int i=0;i<NV;i++){
+    for(int i=0;i<12;i++){
       float norm = std::sqrt(Verts[i][0] * Verts[i][0] + Verts[i][1] * Verts[i][1] + Verts[i][2] * Verts[i][2]);
       Verts[i][0] /= norm;
       Verts[i][1] /= norm;
@@ -102,7 +100,6 @@ namespace DPM{
       newFaces.clear();
       newFaces.shrink_to_fit();
     }
-    NV = (int)Verts.size();
     Forces.resize(NV);
     for(int vi=0;vi<NV;vi++){
       Verts[vi][0] *= r0;
@@ -113,10 +110,11 @@ namespace DPM{
       Verts[vi][2] += starting_point[2];
       Forces[vi] = {0,0,0,0};
     }
-    NF = (int)Faces.size();
     v0 = (4.0f/3.0f) * M_PI *pow(r0,3);
-    s0 = pow((6*sqrt(M_PI)*v0*calA),(2.0f/3.0f));
-    a0 = (s0/(float)NF);
+    sa0 = pow((6*sqrt(M_PI)*v0*calA),(2.0f/3.0f));
+    a0 = (sa0/(float)NF);
+    Volume = GetVolume();
+    SurfaceArea = GetSurfaceArea();
   }
 
   int Cell3D::AddMiddlePoint(int p1, int p2){
@@ -156,7 +154,7 @@ namespace DPM{
 
   void Cell3D::CLShapeEuler(int nsteps, float dt){
     int NCELLS = 1;
-    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.cl");
+    std::string kernelSource  = readKernelSource("/home/shaka/Code/C++/OpenCL_DPM/src/Cell3D_Kernel.cl");
 
     // OpenCL Setup
     cl::Platform platform = cl::Platform::getDefault();
@@ -183,15 +181,23 @@ namespace DPM{
     VolumeUpdateKernel.setArg(2, gpuForces);
     VolumeUpdateKernel.setArg(3, NCELLS);
     VolumeUpdateKernel.setArg(4, v0);
-    VolumeUpdateKernel.setArg(5, Kb);
+    VolumeUpdateKernel.setArg(5, Kv);
 
     cl::Kernel SurfaceAreaUpdateKernel(program,"SurfaceAreaForceUpdate");
     SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
     SurfaceAreaUpdateKernel.setArg(1, gpuVerts);
     SurfaceAreaUpdateKernel.setArg(2, gpuForces);
     SurfaceAreaUpdateKernel.setArg(3, NCELLS);
-    SurfaceAreaUpdateKernel.setArg(4, s0);
+    SurfaceAreaUpdateKernel.setArg(4, a0);
     SurfaceAreaUpdateKernel.setArg(5, Ka);
+
+    cl::Kernel StickToSurfaceUpdate(program,"StickToSurface");
+    StickToSurfaceUpdate.setArg(0, gpuFaces);
+    StickToSurfaceUpdate.setArg(1, gpuVerts);
+    StickToSurfaceUpdate.setArg(2, gpuForces);
+    StickToSurfaceUpdate.setArg(3, NCELLS);
+    StickToSurfaceUpdate.setArg(4, Ks);
+    StickToSurfaceUpdate.setArg(5, a0);
 
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
@@ -203,16 +209,79 @@ namespace DPM{
     cl::CommandQueue queue(context,device);
 
     for(int step=0;step<nsteps;step++){
-      queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
-      queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
+      if(Kv != 0.0){
+        queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
+      }
+      if(Ka != 0.0){
+        queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
+      }
+      if(Ks != 0.0){
+        queue.enqueueNDRangeKernel(StickToSurfaceUpdate,cl::NullRange, globalSize);
+      }
+      if(step == nsteps-1){
+        queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Forces.data());
+      }
       queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NCELLS,NV));
     }
-
-
-    queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Forces.data());
-
-
-    std::cout << Forces[0][0] << " "<<  Forces[0][1] <<  " " <<Forces[0][2] << std::endl;
+    Volume = GetVolume();
+    SurfaceArea = GetSurfaceArea();
+    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Verts.data());
   }
+
+
+  float Cell3D::GetVolume(){
+    float volume = 0.0;
+    for(const auto& tri : Faces){
+      std::array<float,4> v0 = Verts[tri[0]];
+      std::array<float,4> v1 = Verts[tri[1]];
+      std::array<float,4> v2 = Verts[tri[2]];
+      std::array<float,3> cross;
+      cross[0] = v1[1] * v2[2] - v1[2] * v2[1];
+      cross[1] = v1[2] * v2[0] - v1[0] * v2[2];
+      cross[2] = v1[0] * v2[1] - v1[1] * v2[0];
+      float partialVolume = cross[0] * v0[0] + cross[1] * v0[1] + cross[2] * v0[2];
+      volume += partialVolume;
+    }
+    return std::abs(volume)/6.0;   
+  }
+
+  float Cell3D::GetSurfaceArea(){
+    float SurfaceArea = 0.0;
+    for(const auto& tri : Faces){
+      std::array<float,4> v0 = Verts[tri[0]];
+      std::array<float,4> v1 = Verts[tri[1]];
+      std::array<float,4> v2 = Verts[tri[2]];
+      std::array<float,4> A = {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2], 0};
+      std::array<float,4> B = {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2], 0};
+      std::array<float,3> cross;
+      cross[0] = A[1] * B[2] - A[2] * B[1];
+      cross[1] = A[2] * B[0] - A[0] * B[2];
+      cross[2] = A[0] * B[1] - A[1] * B[0];
+      float partialArea = std::sqrt(cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]);
+      SurfaceArea += partialArea;
+    }
+    return SurfaceArea;
+  }
+
+  std::array<std::array<float,162>,3> Cell3D::GetPositions(){
+    std::array<std::array<float,NV>,3> positions;
+    for(int i=0;i<NV;i++){
+      positions[0][i] = Verts[i][0];
+      positions[1][i] = Verts[i][1];
+      positions[2][i] = Verts[i][2];
+    }
+    return positions;
+  }
+
+  std::array<std::array<float,162>,3> Cell3D::GetForces(){
+    std::array<std::array<float,NV>,3> forces;
+    for(int i=0;i<NV;i++){
+      forces[0][i] = Forces[i][0];
+      forces[1][i] = Forces[i][1];
+      forces[2][i] = Forces[i][2];
+    }
+    return forces;
+  }
+
 }
 
