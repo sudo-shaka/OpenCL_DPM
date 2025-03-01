@@ -24,7 +24,7 @@ float4 GetCOM(__global float4* Verts ,int ci){
   return COM/NUM_VERTICES;
 }
 
-__kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float v0, float Kv){
+__kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float Kv, float v0){
 
   /*data is structred like
       cell1, cell2, cell3, cell4, ...
@@ -68,7 +68,7 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   Forces[vert_indicies[2]] -= Kv * 1.0f/3.0f * volumeStrain * normal;
 }
 
-__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float sa0, float Ka){
+__kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, float Ka, float a0, float l0){
   int ci  = get_global_id(0); //cell index
   int fi  = get_global_id(1); //face index at that cell
 
@@ -79,25 +79,58 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   float4 pos1 = Verts[vert_indicies[1]];
   float4 pos2 = Verts[vert_indicies[2]];
 
-  float l0 = sqrt((4.0*sa0)/sqrt(3.0));
+  ///*
+  // Calculate vectors for the edges of the triangle
+  float4 AB = pos1 - pos0;
+  float4 AC = pos2 - pos0;
+
+  // Calculate the cross product of the edge vectors to get the normal vector
+  float4 crossProduct = cross(AB, AC);
+
+  // Calculate the area of the triangle using the magnitude of the cross product
+  float area = 0.5f * sqrt(dot(crossProduct, crossProduct));
+
+  // Calculate the area strain based on the reference area a0
+  float areaStrain = (area/a0) - 1.0f;
+
+  // Calculate the lengths of the edges of the triangle
   float4 lv0 = pos1 - pos0;
   float4 lv1 = pos2 - pos1;
   float4 lv2 = pos0 - pos2;
-  float4 lengths = (float4)(sqrt(dot(pos1,pos0)), sqrt(dot(pos2,pos1)), sqrt(dot(pos0,pos2)), 0.0f);
-  float4 ulv0 = lv0/lengths[0];
-  float4 ulv1 = lv1/lengths[1];  
-  float4 ulv2 = lv2/lengths[2];
+  float4 lengths = (float4)(sqrt(dot(lv0, lv0)), sqrt(dot(lv1, lv1)), sqrt(dot(lv2, lv2)), 0.0f);
+
+  // Calculate the unit vectors for the edges
+  float4 ulv0 = lv0 / lengths[0];
+  float4 ulv1 = lv1 / lengths[1];
+  float4 ulv2 = lv2 / lengths[2];
+
+  // Calculate the length strain for each edge
   float4 dli = (float4)(lengths[0]/l0 - 1.0, lengths[1]/l0 - 1.0, lengths[2]/l0 - 1.0, 0.0);
-  float third = 1.0/3.0;
-  Forces[vert_indicies[0]] += (sqrt(sa0)/l0) * third * Ka * (dli[0]*ulv0-dli[2]*ulv2);
-  Forces[vert_indicies[1]] += (sqrt(sa0)/l0) * third * Ka * (dli[1]*ulv1-dli[0]*ulv0);
-  Forces[vert_indicies[2]] += (sqrt(sa0)/l0) * third * Ka * (dli[2]*ulv2-dli[1]*ulv1);
+
+  // Calculate the force contributions for each vertex
+  float third = 1.0 / 3.0;
+  //Forces[vert_indicies[0]] += areaStrain * third * Ka * (dli[0] * ulv0 - dli[2] * ulv2);
+  //Forces[vert_indicies[1]] += areaStrain * third * Ka * (dli[1] * ulv1 - dli[0] * ulv0);
+  //Forces[vert_indicies[2]] += areaStrain * third * Ka * (dli[2] * ulv2 - dli[1] * ulv1);
+  Forces[vert_indicies[0]] += third * Ka * (dli[0] * ulv0 - dli[2] * ulv2);
+  Forces[vert_indicies[1]] += third * Ka * (dli[1] * ulv1 - dli[0] * ulv0);
+  Forces[vert_indicies[2]] += third * Ka * (dli[2] * ulv2 - dli[1] * ulv1);
+  //*/
+  /*
+  float4 AB = pos1 - pos0;
+  float4 AC = pos2 - pos0;
+  float4 crossProduct = cross(AB, AC);
+  float area = 0.5f * sqrt(dot(crossProduct, crossProduct));
+  float areaStrain = (area/a0) - 1.0f;
+  Forces[vert_indicies[0]] += Ka * areaStrain * normalize(pos0 - pos2);
+  Forces[vert_indicies[1]] += Ka * areaStrain * normalize(pos1 - pos0);
+  Forces[vert_indicies[2]] += Ka * areaStrain * normalize(pos2 - pos1);
+  */
 }
 
-__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, int NCELLS, float Ks, float sa0){
+__kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, int NCELLS, float Ks, float l0){
   int ci = get_global_id(0);
   int fi = get_global_id(1);
-  float l0 = sqrt((4.0*sa0)/sqrt(3.0));
   int face_index = ci * NCELLS + fi;
   uint4 vert_indicies = VertIdxMat[face_index];
 

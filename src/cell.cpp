@@ -154,6 +154,7 @@ namespace DPM{
 
   void Cell3D::CLShapeEuler(int nsteps, float dt){
     int NCELLS = 1;
+    float l0 = sqrt((4.0*a0)/sqrt(3.0));
     std::string kernelSource  = readKernelSource("/home/shaka/Code/C++/OpenCL_DPM/src/Cell3D_Kernel.cl");
 
     // OpenCL Setup
@@ -180,16 +181,17 @@ namespace DPM{
     VolumeUpdateKernel.setArg(1, gpuVerts);
     VolumeUpdateKernel.setArg(2, gpuForces);
     VolumeUpdateKernel.setArg(3, NCELLS);
-    VolumeUpdateKernel.setArg(4, v0);
-    VolumeUpdateKernel.setArg(5, Kv);
+    VolumeUpdateKernel.setArg(4, Kv);
+    VolumeUpdateKernel.setArg(5, v0);
 
     cl::Kernel SurfaceAreaUpdateKernel(program,"SurfaceAreaForceUpdate");
     SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
     SurfaceAreaUpdateKernel.setArg(1, gpuVerts);
     SurfaceAreaUpdateKernel.setArg(2, gpuForces);
     SurfaceAreaUpdateKernel.setArg(3, NCELLS);
-    SurfaceAreaUpdateKernel.setArg(4, a0);
-    SurfaceAreaUpdateKernel.setArg(5, Ka);
+    SurfaceAreaUpdateKernel.setArg(4, Ka);
+    SurfaceAreaUpdateKernel.setArg(5, a0);
+    SurfaceAreaUpdateKernel.setArg(6, l0);
 
     cl::Kernel StickToSurfaceUpdate(program,"StickToSurface");
     StickToSurfaceUpdate.setArg(0, gpuFaces);
@@ -198,6 +200,7 @@ namespace DPM{
     StickToSurfaceUpdate.setArg(3, NCELLS);
     StickToSurfaceUpdate.setArg(4, Ks);
     StickToSurfaceUpdate.setArg(5, a0);
+    StickToSurfaceUpdate.setArg(6, l0);
 
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
