@@ -190,8 +190,7 @@ namespace DPM{
     SurfaceAreaUpdateKernel.setArg(2, gpuForces);
     SurfaceAreaUpdateKernel.setArg(3, NCELLS);
     SurfaceAreaUpdateKernel.setArg(4, Ka);
-    SurfaceAreaUpdateKernel.setArg(5, a0);
-    SurfaceAreaUpdateKernel.setArg(6, l0);
+    SurfaceAreaUpdateKernel.setArg(5, l0);
 
     cl::Kernel StickToSurfaceUpdate(program,"StickToSurface");
     StickToSurfaceUpdate.setArg(0, gpuFaces);
