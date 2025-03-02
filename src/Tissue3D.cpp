@@ -1,5 +1,6 @@
 #include "Tissue.hpp"
 #include "cell.hpp"
+#include "readKernel.hpp"
 #include <vector>
 #include <string>
 #include <cmath>
@@ -12,16 +13,6 @@
 #include <fstream>
 #include <string>
 #include <iostream>
-
-//need to make this global function
-std::string readKernelSource(const std::string& filename){
-  std::ifstream file(filename);
-  if(!file.is_open()){
-    throw std::runtime_error("Failed to  find kernel file: " + filename);
-  }
-  return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-}
-
 
 namespace DPM{
   Tissue3D::Tissue3D(std::vector<DPM::Cell3D> cells,float phi0){
@@ -163,7 +154,7 @@ namespace DPM{
         allVerts[vi] = Cells[ci].Verts[vi-vistart];
         allForces[vi] = Cells[ci].Forces[vi-vistart];
       }
-      for(unsigned int fi=vistart;fi<fistart+NV;fi++){
+      for(unsigned int fi=fistart;fi<fistart+NV;fi++){
         allVerts[fi][0] = Cells[ci].Faces[fi-fistart][0];
         allVerts[fi][1] = Cells[ci].Faces[fi-fistart][1];
         allVerts[fi][2] = Cells[ci].Faces[fi-fistart][2];
@@ -174,12 +165,12 @@ namespace DPM{
     cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<unsigned int,4>) * NCELLS * NF, allFaces.data());
     cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allVerts.data());
     cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allForces.data());
-    cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), Kv.data());
-    cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), Ka.data());
-    cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), Ks.data());
-    cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), v0.data());
-    cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), a0.data());
-    cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), l0.data());
+    cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Kv.data());
+    cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ka.data());
+    cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ks.data());
+    cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, v0.data());
+    cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, a0.data());
+    cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, l0.data());
 
     cl::Kernel VolumeUpdateKernel(program,"VolumeForceUpdate");
     VolumeUpdateKernel.setArg(0, gpuFaces);

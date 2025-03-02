@@ -1,4 +1,3 @@
-#define CL_HPP_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
 #include <cmath>
 #include <vector>
@@ -10,14 +9,7 @@
 #include <string>
 #include <iostream>
 #include "cell.hpp"
-
-std::string readKernelSource(const std::string& filename){
-  std::ifstream file(filename);
-  if(!file.is_open()){
-    throw std::runtime_error("Failed to  find kernel file: " + filename);
-  }
-  return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-}
+#include "readKernel.hpp"
 
 namespace DPM{
   Cell2D::Cell2D(float x0, float y0, float CalA, int numVerts, float r0){
