@@ -9,7 +9,7 @@ namespace DPM{
   class Tissue3D{
     public:
       int NCELLS;
-      bool PBC;
+      int PBC; //(boolean) periodic boundary conditions
       float L;
       float Kre;
       float Kat;

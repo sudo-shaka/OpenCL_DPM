@@ -23,19 +23,9 @@ float4 GetCOM(__global float4* Verts ,int ci){
 }
 
 __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, __global float* Kv, __global float* v0){
-
-  /*data is structred like
-      cell1, cell2, cell3, cell4, ...
-    f1
-    f2
-    f3
-    ...
-  */
-  uint ci  = get_global_id(0); //cell index
-  uint fi  = get_global_id(1); //face index at that cell
-
-  uint face_index = ci * NUM_FACES + fi;
-  uint4 vert_indicies = VertIdxMat[face_index];
+  uint ci = get_global_id(0);
+  uint fi = get_global_id(1);
+  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
   // Get the positions of the vertices of the current face
   float4 pos0 = Verts[vert_indicies[0]];
   float4 pos1 = Verts[vert_indicies[1]];
@@ -77,11 +67,9 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 }
 
 __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ka, __global float* l0){
-  uint ci  = get_global_id(0); //cell index
-  uint fi  = get_global_id(1); //face index at that cell
-
-  uint face_index = ci * NUM_FACES + fi;
-  uint4 vert_indicies = VertIdxMat[face_index];
+  uint ci = get_global_id(0);
+  uint fi = get_global_id(1);
+  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   float4 pos0 = Verts[vert_indicies[0]];
   float4 pos1 = Verts[vert_indicies[1]];
@@ -111,8 +99,7 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
 __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
-  uint face_index = ci * NUM_FACES + fi;
-  uint4 vert_indicies = VertIdxMat[face_index];
+  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   float4 pos0 = Verts[vert_indicies[0]];
   float4 pos1 = Verts[vert_indicies[1]];
@@ -158,14 +145,20 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   
 }
 
-__kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* l0, float Kc, int PBC, float L){
+__kernel void RepellingForces(
+    __global uint4* VertIdxMat, 
+    __global float4* Verts, 
+    __global float4* Forces, 
+    uint NCELLS, 
+    __global float* l0,
+     float Kc, 
+     int PBC, 
+     float L)
+  {
   // Get the global IDs for the current cell and face
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
-  
-  // Calculate the face index and get the vertex indices for the current face
-  uint face_index = ci * NUM_FACES + fi;
-  uint4 vert_indicies = VertIdxMat[face_index];
+  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   // Get the positions of the vertices of the current face
   float4 pos0 = Verts[vert_indicies[0]];
@@ -175,7 +168,7 @@ __kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts
 
   // Calculate the center of mass (COM) for the current cell
   float4 COM = GetCOM(Verts, ci);
-  uint4 FaceIndexCI = VertIdxMat[face_index];
+  uint4 FaceIndexCI = VertIdxMat[fi];
 
   // Calculate the center of mass for the current face
   float4 faceCOM = (pos0 + pos1 + pos2) / 3.0f;
@@ -195,8 +188,7 @@ __kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts
     // Loop over all faces of the other cell
     for(uint fj = 0; fj < NUM_FACES; fj++){
       // Calculate the face index and get the vertex indices for the other face
-      uint face_index_j = cj * NUM_FACES + fj;
-      uint4 vert_indicies_j = VertIdxMat[face_index_j];
+      uint4 vert_indicies_j = cj * NUM_VERTICES + VertIdxMat[fj];
 
       // Get the positions of the vertices of the other face
       pos0j = Verts[vert_indicies_j[0]];
@@ -217,7 +209,7 @@ __kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts
       // Calculate the distance between the two face centers of mass
       float dist = sqrt(dot(d,d));
       // Skip if the faces have not crossed eachother or if the distance is greater than the cutoff distance
-      if(dot(d, normali) > 0.0f || dist > l0[ci]){
+      if(dot(d, normali) < 0.0f || dist > l0[ci]){
         continue;
       }
 
@@ -235,6 +227,7 @@ __kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts
 __kernel void EulerPosition(__global float4* Verts, __global float4* Forces ,float dt){
   uint ci = get_global_id(0);
   uint vi = get_global_id(1);
+
 
   uint vert_index = ci * NUM_VERTICES + vi;
   Verts[vert_index] += Forces[vert_index] * dt;

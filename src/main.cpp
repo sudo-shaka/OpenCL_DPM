@@ -20,10 +20,11 @@ int main(){
   
   Cell1.Kv = 0;
   Cell1.Ka = 0;
-  Cell1.Ks = 1;
+  Cell1.Ks = 0;
+
   Cell2.Kv = 0;
   Cell2.Ka = 0;
-  Cell2.Ks = 1;
+  Cell2.Ks = 0;
 
   std::vector<DPM::Cell3D> Cells;
   Cells.push_back(Cell1);
@@ -31,7 +32,7 @@ int main(){
   
   
   DPM::Tissue3D Tissue(Cells, 0.3);
-  Tissue.Kre = 0.0f;
+  Tissue.Kre = 1.0f;
 
   Tissue.CLEulerUpdate(1000,0.001);
 

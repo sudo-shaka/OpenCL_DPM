@@ -113,11 +113,8 @@ namespace DPM{
     static int NV = Cells[0].NV;
     
     std::vector<std::array<unsigned int,4>> allFaces;
-    allFaces.resize(NCELLS*NF);
     std::vector<std::array<float,4>> allVerts;
-    allVerts.resize(NCELLS*NV);
     std::vector<std::array<float,4>> allForces;
-    allForces.resize(NCELLS*NV);
     std::vector<float> Kv;
     std::vector<float> Ka;
     std::vector<float> Ks;
@@ -133,14 +130,11 @@ namespace DPM{
       a0.push_back(Cells[ci].a0);
       l0.push_back(sqrt((Cells[ci].a0*4.0f)/sqrt(3.0f)));
       for(int vi=0;vi<NV;vi++){
-        allVerts[ci * NV + vi] = Cells[ci].Verts[vi];
-        allForces[ci * NV + vi] = Cells[ci].Forces[vi];
+        allVerts.push_back(Cells[ci].Verts[vi]);
+        allForces.push_back(Cells[ci].Forces[vi]);
       }
       for(int fi=0;fi<NF;fi++){
-        allFaces[ci * NF + fi][0] = Cells[ci].Faces[fi][0];
-        allFaces[ci * NF + fi][1] = Cells[ci].Faces[fi][1];
-        allFaces[ci * NF + fi][2] = Cells[ci].Faces[fi][2];
-        allFaces[ci * NF + fi][3] = 0;
+        allFaces.push_back(Cells[ci].Faces[fi]);
       }
     }
 

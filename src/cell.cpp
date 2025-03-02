@@ -148,7 +148,6 @@ namespace DPM{
   }
 
   void Cell3D::CLShapeEuler(unsigned int nsteps, float dt){
-    int NCELLS = 1;
     float l0 = sqrt((4.0*a0)/sqrt(3.0));
     std::string kernelSource  = readKernelSource("shaders/Cell3D_Kernel.cl");
 
@@ -172,9 +171,9 @@ namespace DPM{
       exit(0);
     }
 
-    cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NF, Faces.data());
-    cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Verts.data());
-    cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, Forces.data());
+    cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NF, Faces.data());
+    cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NV, Verts.data());
+    cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NV, Forces.data());
     cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Kv);
     cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Ka);
     cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float), &Ks);
@@ -186,7 +185,7 @@ namespace DPM{
     VolumeUpdateKernel.setArg(0, gpuFaces);
     VolumeUpdateKernel.setArg(1, gpuVerts);
     VolumeUpdateKernel.setArg(2, gpuForces);
-    VolumeUpdateKernel.setArg(3, NCELLS);
+    VolumeUpdateKernel.setArg(3, 1);
     VolumeUpdateKernel.setArg(4, gpuKv);
     VolumeUpdateKernel.setArg(5, gpuv0);
 
@@ -194,7 +193,7 @@ namespace DPM{
     SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
     SurfaceAreaUpdateKernel.setArg(1, gpuVerts);
     SurfaceAreaUpdateKernel.setArg(2, gpuForces);
-    SurfaceAreaUpdateKernel.setArg(3, NCELLS);
+    SurfaceAreaUpdateKernel.setArg(3, 1);
     SurfaceAreaUpdateKernel.setArg(4, gpuKa);
     SurfaceAreaUpdateKernel.setArg(5, gpul0);
 
@@ -202,7 +201,7 @@ namespace DPM{
     StickToSurfaceUpdate.setArg(0, gpuFaces);
     StickToSurfaceUpdate.setArg(1, gpuVerts);
     StickToSurfaceUpdate.setArg(2, gpuForces);
-    StickToSurfaceUpdate.setArg(3, NCELLS);
+    StickToSurfaceUpdate.setArg(3, 1);
     StickToSurfaceUpdate.setArg(4, gpuKs);
     StickToSurfaceUpdate.setArg(5, gpua0);
     StickToSurfaceUpdate.setArg(6, gpul0);
@@ -210,10 +209,10 @@ namespace DPM{
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
     EulerUpdate.setArg(1, gpuForces);
-    EulerUpdate.setArg(2, NCELLS);
+    EulerUpdate.setArg(2, 1);
     EulerUpdate.setArg(3, dt);
 
-    cl::NDRange globalSize(NCELLS,NF);
+    cl::NDRange globalSize(1,NF);
     cl::CommandQueue queue(context,device);
 
     for(unsigned int step=0;step<nsteps;step++){
@@ -227,13 +226,13 @@ namespace DPM{
         queue.enqueueNDRangeKernel(StickToSurfaceUpdate,cl::NullRange, globalSize);
       }
       if(step == nsteps-1){
-        queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Forces.data());
+        queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV, Forces.data());
       }
-      queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NCELLS,NV));
+      queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(1,NV));
     }
     Volume = GetVolume();
     SurfaceArea = GetSurfaceArea();
-    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, Verts.data());
+    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV, Verts.data());
   }
 
 
