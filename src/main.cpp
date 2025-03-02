@@ -14,7 +14,7 @@ int main(){
   Cell.Ks = 0.0;
 
   std::vector<DPM::Cell3D> Cells;
-  for(int i=0;i<5;i++){
+  for(int i=0;i<100;i++){
     Cells.push_back(Cell);
   }
   DPM::Tissue3D Tissue(Cells, 0.1);

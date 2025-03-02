@@ -20,6 +20,9 @@ namespace DPM{
   Tissue3D::Tissue3D(std::vector<DPM::Cell3D> cells,float phi0){
     Cells = cells;
     NCELLS  = Cells.size();
+    if(NCELLS > 100){
+      std::cerr << "Warning: Large number of cells, too many cells may crash program!" << std::endl;
+    }
     float volume = 0.0f;
     for(int ci=0;ci<NCELLS;ci++){
       volume += Cells[ci].v0;
