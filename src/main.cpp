@@ -6,29 +6,42 @@
 #include "Tissue.hpp"
 
 int main(){
-  float r0 = 1.0f;
-  std::array<float,3> startp = {0,0,r0};
-  DPM::Cell3D Cell(startp, 1.2 ,r0);
-  Cell.Kv = 0.5;
-  Cell.Ka = 2.0;
-  Cell.Ks = 0.0;
+  float r0 = 1.8f;
+  std::array<float,3> startp1 = {7.0,6.0,1.3};
+  std::array<float,3> startp2 = {4,6.0,1.3};
+  DPM::Cell3D Cell1(startp1, 1.05f, r0);
+  DPM::Cell3D Cell2(startp2, 1.05f, r0);
+  Cell1.Kv = 5.0;
+  Cell1.Ka = 1.5;
+  Cell1.Ks = 0.0;
+  Cell2.Kv = 5.0;
+  Cell2.Ka = 1.5;
+  Cell2.Ks = 0.0;
+  
+  Cell1.Kv = 0;
+  Cell1.Ka = 0;
+  Cell1.Ks = 1;
+  Cell2.Kv = 0;
+  Cell2.Ka = 0;
+  Cell2.Ks = 1;
 
   std::vector<DPM::Cell3D> Cells;
-  for(int i=0;i<100;i++){
-    Cells.push_back(Cell);
-  }
-  DPM::Tissue3D Tissue(Cells, 0.1);
+  Cells.push_back(Cell1);
+  Cells.push_back(Cell2);
+  
+  
+  DPM::Tissue3D Tissue(Cells, 0.3);
+  Tissue.Kre = 0.0f;
 
-  Tissue.Disperse2D();
-  Tissue.CLEulerUpdate(100,0.001);
+  Tissue.CLEulerUpdate(1000,0.001);
 
-  /*for(int i=0;i<(int)Tissue.NCELLS;i++){
+  for(int i=0;i<(int)Tissue.NCELLS;i++){
     for(int j=0;j<(int)Tissue.Cells[i].NV;j++){
       std::cout << Tissue.Cells[i].Verts[j][0] << "," << Tissue.Cells[i].Verts[j][1] << "," << Tissue.Cells[i].Verts[j][2] << std::endl;
     }
-  }*/
+  }
 
-  Cell.CLShapeEuler(1000, 0.001);
+  /*Cell.CLShapeEuler(1000, 0.001);
   for(int i=0;i<(int)Cell.NV;i++){
     std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
   }
@@ -44,7 +57,7 @@ int main(){
 
   for(int i= 0;i<(int)Cell.NV;i++){
     std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
-  }
+  }*/
 
   return 0;
 }

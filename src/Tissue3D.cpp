@@ -133,17 +133,16 @@ namespace DPM{
       a0.push_back(Cells[ci].a0);
       l0.push_back(sqrt((Cells[ci].a0*4.0f)/sqrt(3.0f)));
       for(int vi=0;vi<NV;vi++){
-        allVerts[ci * NCELLS + vi] = Cells[ci].Verts[vi];
-        allForces[ci * NCELLS + vi] = Cells[ci].Forces[vi];
+        allVerts[ci * NV + vi] = Cells[ci].Verts[vi];
+        allForces[ci * NV + vi] = Cells[ci].Forces[vi];
       }
       for(int fi=0;fi<NF;fi++){
-        allFaces[ci * NCELLS + fi][0] = Cells[ci].Faces[fi][0];
-        allFaces[ci * NCELLS + fi][1] = Cells[ci].Faces[fi][1];
-        allFaces[ci * NCELLS + fi][2] = Cells[ci].Faces[fi][2];
-        allFaces[ci * NCELLS + fi][3] = 0;
+        allFaces[ci * NF + fi][0] = Cells[ci].Faces[fi][0];
+        allFaces[ci * NF + fi][1] = Cells[ci].Faces[fi][1];
+        allFaces[ci * NF + fi][2] = Cells[ci].Faces[fi][2];
+        allFaces[ci * NF + fi][3] = 0;
       }
     }
-
 
     // OpenCL Setup
     cl::Platform platform = cl::Platform::getDefault();
@@ -244,6 +243,16 @@ namespace DPM{
     StickToSurfaceUpdate.setArg(5, gpua0);
     StickToSurfaceUpdate.setArg(6, gpul0);
 
+    cl::Kernel RepellingForces(program,"RepellingForces");
+    RepellingForces.setArg(0, gpuFaces);
+    RepellingForces.setArg(1, gpuVerts);
+    RepellingForces.setArg(2, gpuForces);
+    RepellingForces.setArg(3, NCELLS);
+    RepellingForces.setArg(4, gpul0);
+    RepellingForces.setArg(5, Kre);
+    RepellingForces.setArg(6, PBC);
+    RepellingForces.setArg(7, L);
+
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
     EulerUpdate.setArg(1, gpuForces);
@@ -258,6 +267,7 @@ namespace DPM{
       queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(StickToSurfaceUpdate,cl::NullRange, globalSize);
+      queue.enqueueNDRangeKernel(RepellingForces,cl::NullRange, globalSize);
       if(step == nsteps-1){
         queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allForces.data());
       }
@@ -269,8 +279,8 @@ namespace DPM{
     // Update the cells
     for(int ci=0; ci < NCELLS; ci++){
       for(int vi=0;vi<NV;vi++){
-        Cells[ci].Verts[vi] = allVerts[ci * NCELLS + vi];
-        Cells[ci].Forces[vi] = allForces[ci *  NCELLS + vi];
+        Cells[ci].Verts[vi] = allVerts[ci * NV + vi];
+        Cells[ci].Forces[vi] = allForces[ci * NV + vi];
       }
     }
 
