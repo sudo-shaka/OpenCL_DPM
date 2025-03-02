@@ -11,6 +11,8 @@
 #include "cell.hpp"
 #include "readKernel.hpp"
 
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+
 namespace DPM{
   Cell2D::Cell2D(float x0, float y0, float CalA, int numVerts, float r0){
 
@@ -148,7 +150,7 @@ namespace DPM{
   void Cell3D::CLShapeEuler(unsigned int nsteps, float dt){
     int NCELLS = 1;
     float l0 = sqrt((4.0*a0)/sqrt(3.0));
-    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.comp");
+    std::string kernelSource  = readKernelSource("shaders/Cell3D_Kernel.cl");
 
     // OpenCL Setup
     cl::Platform platform = cl::Platform::getDefault();

@@ -14,6 +14,8 @@
 #include <string>
 #include <iostream>
 
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+
 namespace DPM{
   Tissue3D::Tissue3D(std::vector<DPM::Cell3D> cells,float phi0){
     Cells = cells;
@@ -106,28 +108,7 @@ namespace DPM{
   void Tissue3D::CLEulerUpdate(int nsteps, float dt){
     static int NF = Cells[0].NF;
     static int NV = Cells[0].NV;
-    std::string kernelSource  = readKernelSource("./src/Cell3D_Kernel.comp");
-
-    // OpenCL Setup
-    cl::Platform platform = cl::Platform::getDefault();
-    cl::Device device = cl::Device::getDefault();
-    cl::Context context({device});
-
-    // Compile the kernel
-    cl::Program program(context, kernelSource);
-
-    cl_int err = program.build({device},"-cl-opt-disable -Werror");
-    if(err != CL_SUCCESS){
-      std::cerr <<"ERR: "  <<  CL_SUCCESS  << " : " << "kernel compilation failed:\n";
-      std::string version = device.getInfo<CL_DEVICE_VERSION>();
-      std::cerr << "OpenCL version:" << version << "\n";
-      std::cerr << "platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
-      std::cerr << "device:  " << device.getInfo<CL_DEVICE_NAME>() << "\n";
-      std::cerr << "driver version: " << device.getInfo<CL_DRIVER_VERSION>() << "\n";
-      std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
-      exit(0);
-    }
-
+    
     std::vector<std::array<unsigned int,4>> allFaces;
     allFaces.resize(NCELLS*NF);
     std::vector<std::array<float,4>> allVerts;
@@ -148,30 +129,93 @@ namespace DPM{
       v0.push_back(Cells[ci].v0);
       a0.push_back(Cells[ci].a0);
       l0.push_back(sqrt((Cells[ci].a0*4.0f)/sqrt(3.0f)));
-      unsigned int fistart = NF * NCELLS;
-      unsigned int vistart = NV * NCELLS;
-      for(unsigned int vi=vistart;vi<vistart+NV;vi++){
-        allVerts[vi] = Cells[ci].Verts[vi-vistart];
-        allForces[vi] = Cells[ci].Forces[vi-vistart];
+      for(int vi=0;vi<NV;vi++){
+        allVerts[ci * NCELLS + vi] = Cells[ci].Verts[vi];
+        allForces[ci * NCELLS + vi] = Cells[ci].Forces[vi];
       }
-      for(unsigned int fi=fistart;fi<fistart+NV;fi++){
-        allVerts[fi][0] = Cells[ci].Faces[fi-fistart][0];
-        allVerts[fi][1] = Cells[ci].Faces[fi-fistart][1];
-        allVerts[fi][2] = Cells[ci].Faces[fi-fistart][2];
-        allVerts[fi][3] = 0.0f;
+      for(int fi=0;fi<NF;fi++){
+        allFaces[ci * NCELLS + fi][0] = Cells[ci].Faces[fi][0];
+        allFaces[ci * NCELLS + fi][1] = Cells[ci].Faces[fi][1];
+        allFaces[ci * NCELLS + fi][2] = Cells[ci].Faces[fi][2];
+        allFaces[ci * NCELLS + fi][3] = 0;
       }
     }
 
+
+    // OpenCL Setup
+    cl::Platform platform = cl::Platform::getDefault();
+    cl::Device device = cl::Device::getDefault();
+    cl::Context context({device});
+
+
+    // Compile the kernel
+    std::string kernelSource = readKernelSource("shaders/Cell3D_Kernel.cl");
+    cl::Program program(context, kernelSource);
+
+    cl_int err = program.build({device},"-cl-opt-disable -Werror");
+    if(err != CL_SUCCESS){
+      std::cerr <<"ERR: "  <<  CL_SUCCESS  << " : " << "kernel compilation failed:\n";
+      std::string version = device.getInfo<CL_DEVICE_VERSION>();
+      std::cerr << "OpenCL version:" << version << "\n";
+      std::cerr << "platform: " << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+      std::cerr << "device:  " << device.getInfo<CL_DEVICE_NAME>() << "\n";
+      std::cerr << "driver version: " << device.getInfo<CL_DRIVER_VERSION>() << "\n";
+      std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
+      exit(0);
+    }
+    cl_ulong totalMem = 0, maxAlloc = 0;
+    device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &totalMem);
+    device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &maxAlloc);
+
+    if(maxAlloc < NF * NCELLS * sizeof(std::array<unsigned int,4>)){
+      std::cerr << "Error: Not enough memory on device for all cells\n";
+      std::cout << "Total GPU Memory: " << totalMem / (1024 * 1024) << " MB\n";
+      std::cout << "Max Allocatable Chunk: " << maxAlloc / (1024 * 1024) << " MB" << std::endl;
+      exit(0);
+    }
+
+    cl_ulong allocedMem = 0;
+    bool passed = false;
+    // Create Buffers
+    while(allocedMem < totalMem){
+      allocedMem += sizeof(std::array<unsigned int,4>) * NCELLS * NF;
+      cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<unsigned int,4>) * NCELLS * NF, allFaces.data());
+      allocedMem += sizeof(std::array<float,4>) * NCELLS * NV;
+      cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allVerts.data());
+      allocedMem += sizeof(std::array<float,4>) * NCELLS * NV;
+      cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allForces.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Kv.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ka.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ks.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, v0.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, a0.data());
+      allocedMem += sizeof(float) * NCELLS;
+      cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, l0.data());
+      passed = true;
+      break;
+    }
+    if(passed == false){
+      std::cerr << "Error: Not enough memory on device for all cells\n";
+      std::cout << "Total GPU Memory: " << totalMem / (1024 * 1024) << " MB\n";
+      std::cout << "Max Allocatable Chunk: " << maxAlloc / (1024 * 1024) << " MB" << std::endl;
+      exit(0);
+    }
     cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<unsigned int,4>) * NCELLS * NF, allFaces.data());
     cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allVerts.data());
     cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allForces.data());
-    cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Kv.data());
-    cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ka.data());
-    cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ks.data());
-    cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, v0.data());
-    cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, a0.data());
-    cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, l0.data());
+    cl::Buffer gpuKv(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Kv.data());
+    cl::Buffer gpuKa(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ka.data());
+    cl::Buffer gpuKs(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ks.data());
+    cl::Buffer gpuv0(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, v0.data());
+    cl::Buffer gpua0(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, a0.data());
+    cl::Buffer gpul0(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, l0.data());
 
+    // Create Kernels and set arguments (buffers)
     cl::Kernel VolumeUpdateKernel(program,"VolumeForceUpdate");
     VolumeUpdateKernel.setArg(0, gpuFaces);
     VolumeUpdateKernel.setArg(1, gpuVerts);
@@ -206,6 +250,7 @@ namespace DPM{
     cl::NDRange globalSize(NCELLS,NF);
     cl::CommandQueue queue(context,device);
 
+    // Run the kernels
     for(int step=0;step<nsteps;step++){
       queue.enqueueNDRangeKernel(VolumeUpdateKernel,cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
@@ -215,14 +260,20 @@ namespace DPM{
       }
       queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NCELLS,NV));
     }
+    // Read the results
+    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allVerts.data());
 
-    //add step to place data back into cells
-
+    // Update the cells
+    for(int ci=0; ci < NCELLS; ci++){
+      for(int vi=0;vi<NV;vi++){
+        Cells[ci].Verts[vi] = allVerts[ci * NCELLS + vi];
+        Cells[ci].Forces[vi] = allForces[ci *  NCELLS + vi];
+      }
+    }
 
     for(int ci=0;ci<NCELLS;ci++){
       Cells[ci].Volume = Cells[ci].GetVolume();
       Cells[ci].SurfaceArea = Cells[ci].GetSurfaceArea();
     }
-    queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allVerts.data());
   }
 }
