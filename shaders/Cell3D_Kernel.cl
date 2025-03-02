@@ -232,7 +232,7 @@ __kernel void RepellingForces(__global uint4* VertIdxMat, __global float4* Verts
 
 }
 
-__kernel void EulerPosition(__global float4* Verts, __global float4* Forces, uint NCELLS ,float dt){
+__kernel void EulerPosition(__global float4* Verts, __global float4* Forces ,float dt){
   uint ci = get_global_id(0);
   uint vi = get_global_id(1);
 
