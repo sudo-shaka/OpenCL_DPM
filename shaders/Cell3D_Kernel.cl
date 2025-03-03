@@ -130,13 +130,15 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   barrier(CLK_LOCAL_MEM_FENCE);
 
   //if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
-  if(isnormal && !isunder[0]){
+  //if(isnormal && !isunder[0]){
+
+  if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
     Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos0[2])/l0[ci]) * normalize(surfacePoint0 - COM);
   }
-  if(isnormal && !isunder[1]){
+  if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
     Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos1[2])/l0[ci]) * normalize(surfacePoint1 - COM);
   }
-  if(isnormal && !isunder[2]){
+  if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
     Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos2[2])/l0[ci]) * normalize(surfacePoint2 - COM);
   }
 

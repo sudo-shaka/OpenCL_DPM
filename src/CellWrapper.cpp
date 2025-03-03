@@ -13,5 +13,8 @@ void init_Cell(py::module &m){
         .def_readwrite("Verts", &DPM::Cell3D::Verts)
         .def("CLShapeEuler", &DPM::Cell3D::CLShapeEuler)
         .def("GetVolume", &DPM::Cell3D::GetVolume)
+        .def("GetPositions", &DPM::Cell3D::GetPositions)
+        .def("GetForces",&DPM::Cell3D::GetForces)
+        .def("GetVolume",&DPM::Cell3D::GetVolume)
         ;
 }
