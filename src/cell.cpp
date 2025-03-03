@@ -209,8 +209,7 @@ namespace DPM{
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
     EulerUpdate.setArg(1, gpuForces);
-    EulerUpdate.setArg(2, 1);
-    EulerUpdate.setArg(3, dt);
+    EulerUpdate.setArg(2, dt);
 
     cl::NDRange globalSize(1,NF);
     cl::CommandQueue queue(context,device);

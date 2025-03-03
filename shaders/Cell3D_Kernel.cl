@@ -38,14 +38,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
     float4 vert0  = Verts[face[0]]; 
     float4 vert1  = Verts[face[1]]; 
     float4 vert2  = Verts[face[2]]; 
-    float volumepart =  dot(cross(vert1,vert2),vert0);
-    if(volumepart < 0){
-      volumepart *= -1;
-    }
-    volume+=volumepart;
+    float volumepart = dot(cross(vert1,vert2),vert0);
+    volume += volumepart;
   }
-
-  volume /= 6.0f;
+  volume = fabs(volume) / 6.0f;
 
   // Calculate the volume strain
   float volumeStrain = (volume / v0[ci]) - 1.0;
@@ -61,9 +57,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float4 normal = normalize(cross(A, B));
 
   // Update the forces acting on the vertices based on the volume strain
-  Forces[vert_indicies[0]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
-  Forces[vert_indicies[1]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
-  Forces[vert_indicies[2]] -= Kv[ci] * 1.0f / 3.0f * volumeStrain * normal;
+  float third = 1.0f / 3.0f;
+  Forces[vert_indicies[0]] -= Kv[ci] * third * volumeStrain * normal;
+  Forces[vert_indicies[1]] -= Kv[ci] * third * volumeStrain * normal;
+  Forces[vert_indicies[2]] -= Kv[ci] * third * volumeStrain * normal;
 }
 
 __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ka, __global float* l0){
@@ -79,7 +76,7 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   float4 lv0 = pos1 - pos0;
   float4 lv1 = pos2 - pos1;
   float4 lv2 = pos0 - pos2;
-  float4 lengths = (float4)(sqrt(dot(lv0, lv0)), sqrt(dot(lv1, lv1)), sqrt(dot(lv2, lv2)), 0.0f);
+  float4 lengths = (float4)(length(lv0), length(lv1), length(lv2), 0.0f);
 
   // Calculate the unit vectors for the edges
   float4 ulv0 = lv0 / lengths[0];
@@ -94,6 +91,7 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   Forces[vert_indicies[0]] += third * Ka[ci] * (dli[0] * ulv0 - dli[2] * ulv2);
   Forces[vert_indicies[1]] += third * Ka[ci] * (dli[1] * ulv1 - dli[0] * ulv0);
   Forces[vert_indicies[2]] += third * Ka[ci] * (dli[2] * ulv2 - dli[1] * ulv1);
+  
 }
 
 __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
