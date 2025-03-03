@@ -1,20 +1,21 @@
+#define CL_TARGET_OPENCL_VERSION 300
+#define CL_HPP_TARGET_OPENCL_VERSION 300
 #include "Tissue.hpp"
 #include "cell.hpp"
 #include "readKernel.hpp"
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
 #include <vector>
 #include <string>
 #include <cmath>
 #include <iostream>
 #include <thread>
-#include <CL/cl.h>
 #include <array>
-#include <CL/opencl.hpp>
 #include <stdexcept>
 #include <fstream>
 #include <string>
 #include <iostream>
 
-#define CL_HPP_TARGET_OPENCL_VERSION 300
 
 namespace DPM{
   Tissue3D::Tissue3D(std::vector<DPM::Cell3D> cells,float phi0){

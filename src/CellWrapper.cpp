@@ -14,6 +14,7 @@ void init_Cell(py::module &m){
         .def("CLShapeEuler", &DPM::Cell3D::CLShapeEuler)
         .def("GetVolume", &DPM::Cell3D::GetVolume)
         .def("GetPositions", &DPM::Cell3D::GetPositions)
+        .def("GetFaces",&DPM::Cell3D::GetFaces)
         .def("GetForces",&DPM::Cell3D::GetForces)
         .def("GetVolume",&DPM::Cell3D::GetVolume)
         ;

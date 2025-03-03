@@ -1,3 +1,5 @@
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+#define CL_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
 #include <cmath>
 #include <vector>
@@ -10,8 +12,6 @@
 #include <iostream>
 #include "cell.hpp"
 #include "readKernel.hpp"
-
-#define CL_HPP_TARGET_OPENCL_VERSION 300
 
 namespace DPM{
   Cell2D::Cell2D(float x0, float y0, float CalA, int numVerts, float r0){
@@ -248,7 +248,7 @@ namespace DPM{
       float partialVolume = cross[0] * v0[0] + cross[1] * v0[1] + cross[2] * v0[2];
       volume += partialVolume;
     }
-    return std::abs(volume)/6.0;   
+    return std::abs(volume)/6.0;
   }
 
   float Cell3D::GetSurfaceArea(){
@@ -287,6 +287,17 @@ namespace DPM{
       forces[2][i] = Forces[i][2];
     }
     return forces;
+  }
+
+  std::array<std::array<int,3>,320> Cell3D::GetFaces(){
+    std::array<std::array<int,3>,NF> faces;
+    for(unsigned int i=0; i < NF; i++){
+      for(int j=0;j<3;j++){
+        faces[i][j] = (int)Faces[i][j];
+      }
+    }
+
+    return faces;
   }
 
   std::array<float,3> Cell3D::GetCOM(){

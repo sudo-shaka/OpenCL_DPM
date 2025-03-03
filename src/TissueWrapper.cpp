@@ -10,6 +10,8 @@ void init_Tissue(py::module &m){
         .def_readwrite("Kre", &DPM::Tissue3D::Kre)
         .def_readwrite("Cells", &DPM::Tissue3D::Cells)
         .def_readonly("NCELLS", &DPM::Tissue3D::NCELLS)
+        .def_readonly("L", &DPM::Tissue3D::L)
+        .def_readonly("PBC", &DPM::Tissue3D::PBC)
         .def("CLEulerUpdate", &DPM::Tissue3D::CLEulerUpdate)
         .def("Disperse2D", &DPM::Tissue3D::Disperse2D)
         ;

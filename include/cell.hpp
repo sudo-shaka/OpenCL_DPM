@@ -60,9 +60,9 @@ namespace DPM{
     float GetSurfaceArea();
     std::array<std::array<float,NV>,3> GetPositions();
     std::array<std::array<float,NV>,3> GetForces();
+    std::array<std::array<int,3>,NF> GetFaces();
     std::array<float,3>  GetCOM();
     Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
-    
     private:
     std::vector<std::vector<int>> midpointCache;
     unsigned int AddMiddlePoint(unsigned int p1, unsigned int p2);
