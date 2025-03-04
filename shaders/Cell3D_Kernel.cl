@@ -25,6 +25,9 @@ float4 GetCOM(__global float4* Verts ,int ci){
 __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, __global float* Kv, __global float* v0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
+  if(Kv[ci] == 0){
+    return;
+  }
   uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
   // Get the positions of the vertices of the current face
   float4 pos0 = Verts[vert_indicies[0]];
@@ -66,6 +69,9 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ka, __global float* l0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
+  if(Ka[ci] == 0){
+    return;
+  }
   uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   float4 pos0 = Verts[vert_indicies[0]];
@@ -97,6 +103,9 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
 __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
+  if(Ks[ci] == 0){
+    return;
+  }
   uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   float4 pos0 = Verts[vert_indicies[0]];
@@ -132,17 +141,18 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   //if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
   //if(isnormal && !isunder[0]){
 
-  if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
+  //if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
+  if(isnormal && !isunder[0]){
     Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos0[2])/l0[ci]) * normalize(surfacePoint0 - COM);
   }
-  if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
+  //if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
+  if(isnormal && !isunder[1]){
     Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos1[2])/l0[ci]) * normalize(surfacePoint1 - COM);
   }
-  if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
+  //if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
+  if(isnormal && !isunder[2]){
     Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos2[2])/l0[ci]) * normalize(surfacePoint2 - COM);
   }
-
-  
 }
 
 __kernel void RepellingForces(
@@ -158,6 +168,11 @@ __kernel void RepellingForces(
   // Get the global IDs for the current cell and face
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
+
+  if(Kc == 0){
+    return;
+  }
+
   uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
   // Get the positions of the vertices of the current face
@@ -221,7 +236,33 @@ __kernel void RepellingForces(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
+}
 
+__kernel void AllVertAttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
+  float dist;
+  uint ci = get_global_id(0);
+  uint vi = get_global_id(1);
+  if(Kat == 0){
+    return;
+  }
+  uint vert_index = ci * NUM_VERTICES + vi;
+  float4 p1 = Verts[vert_index];
+  for(int cj=0;cj<NCELLS;cj++){
+    if(ci != cj){
+      for(int vj=0;vj<NUM_VERTICES;vj++){
+        float4 p2 = Verts[cj * NUM_VERTICES + vj];
+        float4 delta = p2-p1;
+        if(PBC){
+          delta -= L*round(delta/L);
+        }
+        dist = sqrt(dot(delta,delta));
+        if(dist < l0[ci]){
+          Forces[vert_index] -= Kat * 0.5f * (dist/l0[ci] - 1.0f) * normalize(delta);
+          Forces[cj * NUM_VERTICES + vj] += Kat * 0.5f * (dist/l0[ci] - 1.0f) * normalize(delta);
+        }
+      }
+    }
+  }
 }
 
 __kernel void EulerPosition(__global float4* Verts, __global float4* Forces ,float dt){
