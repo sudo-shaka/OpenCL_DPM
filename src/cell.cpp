@@ -19,6 +19,14 @@ namespace DPM{
   }
 
   Cell3D::Cell3D(std::array<float,3> starting_point,float  calA, float _r0){
+
+    //gl kernel compilation
+    platform = cl::Platform::getDefault();
+    device = cl::Device::getDefault();
+    context = cl::Context({device});
+    kernelSource = readKernelSource("shaders/Cell3D_Kernel.cl");
+    program = cl::Program(context,kernelSource);
+
     calA0 = calA;
     r0 = _r0;
     Kv = 0.0f;
@@ -149,16 +157,6 @@ namespace DPM{
 
   void Cell3D::CLShapeEuler(unsigned int nsteps, float dt){
     float l0 = sqrt((4.0*a0)/sqrt(3.0));
-    std::string kernelSource  = readKernelSource("shaders/Cell3D_Kernel.cl");
-
-    // OpenCL Setup
-    cl::Platform platform = cl::Platform::getDefault();
-    cl::Device device = cl::Device::getDefault();
-    cl::Context context({device});
-
-    // Compile the kernel
-    cl::Program program(context, kernelSource);
-
     cl_int err = program.build({device},"-cl-opt-disable -Werror");
     if(err != CL_SUCCESS){
       std::cerr <<"ERR: "  <<  CL_SUCCESS  << " : " << "kernel compilation failed:\n";

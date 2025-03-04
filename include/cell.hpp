@@ -1,5 +1,9 @@
-#include<vector>
+#define CL_TARGET_OPENCL_VERSION 300
+#define CL_HPP_TARGET_OPENCL_VERSION 300
 #include<array>
+#include<vector>
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
 
 #ifndef __CELL__
 #define __CELL__
@@ -55,6 +59,12 @@ namespace DPM{
     std::vector<std::array<float,4>> Verts;
     std::vector<std::array<float,4>> Forces;
     std::vector<std::array<unsigned int,4>> Faces;
+
+    std::string kernelSource;
+    cl::Platform platform;
+    cl::Device device;
+    cl::Program program;
+    cl::Context context;
     void CLShapeEuler(unsigned int nsteps, float dt);
     float GetVolume();
     float GetSurfaceArea();

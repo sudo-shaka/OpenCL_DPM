@@ -22,6 +22,26 @@ int main(){
   Cell.Ka = 1;
   Cell.Ks = 1;
 
+  Cell.CLShapeEuler(1, 0.001);
+
+  for(int i=0;i<(int)Cell.NV;i++){
+    std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
+  }
+
+  for(int step=0;step<20;step++){
+    Cell.CLShapeEuler(50, 0.005);
+
+    for(int i=0;i<(int)Cell.NV;i++){
+      std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
+    }
+  }
+
+  for(int i= 0;i<(int)Cell.NV;i++){
+    std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
+  }
+
+  std::cout << "single cell testing done!" << std::endl;
+
   Cell2.Kv = 1;
   Cell2.Ka = 1;
   Cell2.Ks = 1;
@@ -34,9 +54,9 @@ int main(){
 
 
   DPM::Tissue3D Tissue(Cells, 0.35);
-  Tissue.Kre = 1.0f;
+  Tissue.Kre = 50.0f;
   Tissue.Disperse2D();
-  Tissue.CLEulerUpdate(1000,0.005);
+  Tissue.CLEulerUpdate(100,0.005);
 
   for(int i=0;i<(int)Tissue.NCELLS;i++){
     for(int j=0;j<(int)Tissue.Cells[i].NV;j++){
@@ -44,11 +64,11 @@ int main(){
     }
   }
 
-  /*Cell.Kv = 1;
+  Cell.Kv = 1;
   Cell.Ka = 1;
   Cell.Ks = 1;
 
-  //Cell.CLShapeEuler(1, 0.001);
+  Cell.CLShapeEuler(1, 0.001);
 
   for(int i=0;i<(int)Cell.NV;i++){
     std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
@@ -60,12 +80,11 @@ int main(){
     for(int i=0;i<(int)Cell.NV;i++){
       std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
     }
-
   }
 
   for(int i= 0;i<(int)Cell.NV;i++){
     std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;
-  }*/
+  }
 
   return 0;
 }
