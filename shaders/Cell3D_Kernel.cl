@@ -38,9 +38,9 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float volume = 0.0f;
   for(uint i=0;i<NUM_FACES;i++){
     uint4 face = VertIdxMat[i];
-    float4 vert0  = Verts[face[0]];
-    float4 vert1  = Verts[face[1]];
-    float4 vert2  = Verts[face[2]];
+    float4 vert0  = Verts[ci*NUM_VERTICES+face[0]];
+    float4 vert1  = Verts[ci*NUM_VERTICES+face[1]];
+    float4 vert2  = Verts[ci*NUM_VERTICES+face[2]];
     float volumepart = dot(cross(vert1,vert2),vert0);
     volume += volumepart;
   }
