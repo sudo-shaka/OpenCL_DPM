@@ -36,8 +36,8 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 
   // Calculate the volume contribution of the current face using the scalar triple product
   float volume = 0.0f;
-  for(uint cifi=0;cifi<NUM_FACES;ci++){
-    uint4 face = VertIdxMat[cifi];
+  for(uint i=0;i<NUM_FACES;i++){
+    uint4 face = VertIdxMat[i];
     float4 vert0  = Verts[face[0]];
     float4 vert1  = Verts[face[1]];
     float4 vert2  = Verts[face[2]];
