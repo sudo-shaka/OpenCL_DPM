@@ -279,6 +279,19 @@ namespace DPM{
     return positions;
   }
 
+  std::array<std::array<float,162>,3> Cell3D::GetVesselPositions(float L){
+    std::array<std::array<float,NV>,3> positions;
+    float scale = (2.0*M_PI)/L;
+    float radius = L/(2*M_PI);
+    for(unsigned int vi=0;vi<NV;vi++){
+      float theta = Verts[vi][0] * scale;
+      positions[0][vi] = (radius-Verts[vi][2]) * cos(theta);
+      positions[2][vi] = (radius-Verts[vi][2]) * sin(theta);
+      positions[1][vi] = Verts[vi][1];
+    }
+    return positions;
+  }
+
   std::array<std::array<float,162>,3> Cell3D::GetForces(){
     std::array<std::array<float,NV>,3> forces;
     for(unsigned int i=0;i<NV;i++){

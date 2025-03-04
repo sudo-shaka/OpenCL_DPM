@@ -1,5 +1,9 @@
-#include  <vector>
+#define CL_TARGET_OPENCL_VERSION 300
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+#include <vector>
 #include <string>
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
 #include "cell.hpp"
 
 #ifndef __TISSUE__
@@ -15,6 +19,10 @@ namespace DPM{
       float Kat;
       std::string attractionMethod;
       std::vector<DPM::Cell3D> Cells;
+      cl::Platform platform;
+      cl::Device device;
+      cl::Program program;
+      cl::Context context;
 
       Tissue3D(std::vector<DPM::Cell3D> cells, float phi0);
       

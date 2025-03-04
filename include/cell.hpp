@@ -59,6 +59,7 @@ namespace DPM{
     float GetVolume();
     float GetSurfaceArea();
     std::array<std::array<float,NV>,3> GetPositions();
+    std::array<std::array<float,162>,3> GetVesselPositions(float L);
     std::array<std::array<float,NV>,3> GetForces();
     std::array<std::array<int,3>,NF> GetFaces();
     std::array<float,3>  GetCOM();

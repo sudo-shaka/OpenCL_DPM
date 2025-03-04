@@ -31,6 +31,15 @@ namespace DPM{
     L = cbrt(volume)/phi0;
     PBC = true;
     attractionMethod.assign("General");
+    
+    platform = cl::Platform::getDefault();
+    device = cl::Device::getDefault();
+    cl::Context _context({device});
+    context = _context;
+    // Compile the kernel
+    std::string kernelSource = readKernelSource("shaders/Cell3D_Kernel.cl");
+    cl::Program p(context, kernelSource);
+    program = p;
   }
 
   void Tissue3D::Disperse2D(){
@@ -140,14 +149,6 @@ namespace DPM{
     }
 
     // OpenCL Setup
-    cl::Platform platform = cl::Platform::getDefault();
-    cl::Device device = cl::Device::getDefault();
-    cl::Context context({device});
-
-
-    // Compile the kernel
-    std::string kernelSource = readKernelSource("shaders/Cell3D_Kernel.cl");
-    cl::Program program(context, kernelSource);
 
     cl_int err = program.build({device},"-cl-opt-disable -Werror");
     if(err != CL_SUCCESS){
@@ -160,48 +161,7 @@ namespace DPM{
       std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << std::endl;
       exit(0);
     }
-    cl_ulong totalMem = 0, maxAlloc = 0;
-    device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &totalMem);
-    device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &maxAlloc);
 
-    if(maxAlloc < NF * NCELLS * sizeof(std::array<unsigned int,4>)){
-      std::cerr << "Error: Not enough memory on device for all cells\n";
-      std::cout << "Total GPU Memory: " << totalMem / (1024 * 1024) << " MB\n";
-      std::cout << "Max Allocatable Chunk: " << maxAlloc / (1024 * 1024) << " MB" << std::endl;
-      exit(0);
-    }
-
-    cl_ulong allocedMem = 0;
-    bool passed = false;
-    // Create Buffers
-    while(allocedMem < totalMem){
-      allocedMem += sizeof(std::array<unsigned int,4>) * NCELLS * NF;
-      cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<unsigned int,4>) * NCELLS * NF, allFaces.data());
-      allocedMem += sizeof(std::array<float,4>) * NCELLS * NV;
-      cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allVerts.data());
-      allocedMem += sizeof(std::array<float,4>) * NCELLS * NV;
-      cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allForces.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpuKv(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Kv.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpuKa(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ka.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpuKs(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, Ks.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpuv0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, v0.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpua0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, a0.data());
-      allocedMem += sizeof(float) * NCELLS;
-      cl::Buffer gpul0(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * NCELLS, l0.data());
-      passed = true;
-      break;
-    }
-    if(passed == false){
-      std::cerr << "Error: Not enough memory on device for all cells\n";
-      std::cout << "Total GPU Memory: " << totalMem / (1024 * 1024) << " MB\n";
-      std::cout << "Max Allocatable Chunk: " << maxAlloc / (1024 * 1024) << " MB" << std::endl;
-      exit(0);
-    }
     cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(std::array<unsigned int,4>) * NCELLS * NF, allFaces.data());
     cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allVerts.data());
     cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(std::array<float,4>) * NCELLS * NV, allForces.data());

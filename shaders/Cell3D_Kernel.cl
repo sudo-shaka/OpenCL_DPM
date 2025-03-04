@@ -36,11 +36,11 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 
   // Calculate the volume contribution of the current face using the scalar triple product
   float volume = 0.0f;
-  for(uint cifi=ci*NUM_VERTICES;cifi<ci*NCELLS+NUM_FACES;cifi++){
+  for(uint cifi=0;cifi<NUM_FACES;ci++){
     uint4 face = VertIdxMat[cifi];
-    float4 vert0  = Verts[face[0]]; 
-    float4 vert1  = Verts[face[1]]; 
-    float4 vert2  = Verts[face[2]]; 
+    float4 vert0  = Verts[face[0]];
+    float4 vert1  = Verts[face[1]];
+    float4 vert2  = Verts[face[2]];
     float volumepart = dot(cross(vert1,vert2),vert0);
     volume += volumepart;
   }
@@ -97,7 +97,7 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
   Forces[vert_indicies[0]] += third * Ka[ci] * (dli[0] * ulv0 - dli[2] * ulv2);
   Forces[vert_indicies[1]] += third * Ka[ci] * (dli[1] * ulv1 - dli[0] * ulv0);
   Forces[vert_indicies[2]] += third * Ka[ci] * (dli[2] * ulv2 - dli[1] * ulv1);
-  
+
 }
 
 __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
@@ -138,31 +138,25 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
   float4 COM = GetCOM(Verts, ci);
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  //if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
-  //if(isnormal && !isunder[0]){
-
-  //if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
-  if(isnormal && !isunder[0]){
+  if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
     Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos0[2])/l0[ci]) * normalize(surfacePoint0 - COM);
   }
-  //if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
-  if(isnormal && !isunder[1]){
+  if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
     Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos1[2])/l0[ci]) * normalize(surfacePoint1 - COM);
   }
-  //if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
-  if(isnormal && !isunder[2]){
+  if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
     Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos2[2])/l0[ci]) * normalize(surfacePoint2 - COM);
   }
 }
 
 __kernel void RepellingForces(
-    __global uint4* VertIdxMat, 
-    __global float4* Verts, 
-    __global float4* Forces, 
-    uint NCELLS, 
+    __global uint4* VertIdxMat,
+    __global float4* Verts,
+    __global float4* Forces,
+    uint NCELLS,
     __global float* l0,
-     float Kc, 
-     int PBC, 
+     float Kc,
+     int PBC,
      float L)
   {
   // Get the global IDs for the current cell and face
