@@ -42,7 +42,7 @@ def PlotTissue2D(T):
 
       if max(vx) - min(vx) <= T.L/2 and max(vy) - min(vy) <= T.L/2:
         plt.plot(vx, vy,color=(r1[ci],r2[ci],r3[ci]))  # Close the loop by adding the first vertex at the end
-    plt.scatter(x, y,color=(r1[ci],r2[ci],r3[ci]))
-
+    plt.scatter(x, y, s=3,color=(r1[ci],r2[ci],r3[ci]))
+  plt.axis('equal')
   plt.xlim(0,T.L)
   plt.ylim(0,T.L)

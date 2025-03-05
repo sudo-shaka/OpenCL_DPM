@@ -220,10 +220,11 @@ __kernel void RepellingForces(
       }
 
       // Calculate the repelling force and update the forces acting on the vertices
-      float4 force = Kc * normalize(faceCOM - faceCOMj) * (dist/l0[ci]);
-      Forces[vert_indicies[0]] += force;
-      Forces[vert_indicies[1]] += force;
-      Forces[vert_indicies[2]] += force;
+      //float4 force = Kc * normalize(faceCOM - faceCOMj) * (dist/l0[ci]);
+      //float4 force = Kc * normalize(COM-faceCOM) * (dist/l0[ci]);
+      Forces[vert_indicies[0]] += Kc * normalize(COM - pos0) * (dist/l0[ci]);
+      Forces[vert_indicies[1]] += Kc * normalize(COM - pos1) * (dist/l0[ci]);
+      Forces[vert_indicies[2]] += Kc * normalize(COM - pos2) * (dist/l0[ci]);
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
