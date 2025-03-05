@@ -11,36 +11,19 @@ namespace DPM{
   struct Cell2D{
     unsigned int NV;
     float calA0;
+    float a0;
     float l0;
     float r0;
-    float v0;
     float Ka;
     float Kb;
     float Kl;
-    float Area;
-    float COMX;
-    float COMY;
-    std::vector<int> ip1;
-    std::vector<int> im1;
-    float vmin;
-    float Dr;
-    float Ds;
-    float a0;
-    float psi;
-    float U;
     float Ks;
-    std::vector<float> l1;
-    std::vector<float> l2;
-    std::vector<float> radii;
-    std::vector<int> NearestVertexIdx;
-    std::vector<int> NearestCellIdx;
     std::vector<std::array<float,2>> Verticies;
-    Cell2D(float x0, float y0, float calA, int NV, float r0);
+    std::vector<std::array<float,2>> Forces;
+    Cell2D(float x0, float y0, float calA,unsigned int NV, float a0);
     Cell2D(std::vector<std::array<float,2>> Verticies);
-
-    void SetCellVelocity(float v);
-    void UpdateDirectorDiffusion(float dt);
     float GetArea();
+    float GetPerim();
   };
   class Cell3D{
     public:
@@ -60,11 +43,6 @@ namespace DPM{
     std::vector<std::array<float,4>> Forces;
     std::vector<std::array<unsigned int,4>> Faces;
 
-    std::string kernelSource;
-    cl::Platform platform;
-    cl::Device device;
-    cl::Program program;
-    cl::Context context;
     void CLShapeEuler(unsigned int nsteps, float dt);
     float GetVolume();
     float GetSurfaceArea();
@@ -74,7 +52,13 @@ namespace DPM{
     std::array<std::array<int,3>,NF> GetFaces();
     std::array<float,3>  GetCOM();
     Cell3D(std::array<float,3> starting_point, float CalA0, float r0);
+
     private:
+    std::string kernelSource;
+    cl::Platform platform;
+    cl::Device device;
+    cl::Program program;
+    cl::Context context;
     std::vector<std::vector<int>> midpointCache;
     unsigned int AddMiddlePoint(unsigned int p1, unsigned int p2);
   };

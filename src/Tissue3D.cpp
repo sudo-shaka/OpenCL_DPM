@@ -9,13 +9,8 @@
 #include <string>
 #include <cmath>
 #include <iostream>
-#include <thread>
 #include <array>
-#include <stdexcept>
-#include <fstream>
 #include <string>
-#include <iostream>
-
 
 namespace DPM{
   Tissue3D::Tissue3D(std::vector<DPM::Cell3D> cells,float phi0){

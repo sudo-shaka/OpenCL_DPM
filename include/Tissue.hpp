@@ -34,15 +34,23 @@ namespace DPM{
 
   class Tissue2D{
     public:
+      std::vector<Cell2D> cells;
       int NCELLS;
       bool PBC;
       float Kre;
       float Kat;
-
+      float phi0;
+      float L;
       Tissue2D(std::vector<DPM::Cell2D> cells, float  phi0);
-
       void Disperse();
-      void  CLEulerUpdate();
+      void  CLEulerUpdate(int nsteps, float dt);
+    private:
+      int maxNV;
+      std::string kernelSource;
+      cl::Platform platform;
+      cl::Device device;
+      cl::Context context;
+      cl::Program program;
   };
 }
 

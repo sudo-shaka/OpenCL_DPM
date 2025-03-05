@@ -5,8 +5,6 @@
 #include <vector>
 #include <array>
 #include <CL/opencl.hpp>
-#include <stdexcept>
-#include <fstream>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -14,8 +12,48 @@
 #include "readKernel.hpp"
 
 namespace DPM{
-  Cell2D::Cell2D(float x0, float y0, float CalA, int numVerts, float r0){
+  Cell2D::Cell2D(float x0, float y0, float CalA,unsigned int numVerts, float _a0){
+    NV = numVerts;
+    calA0 = CalA*(NV*tan(M_PI/NV)/M_PI);
+    a0 = _a0;
+    r0 = sqrt((2.0f*a0)/NV*sin((2.0*M_PI)/NV));
+    l0 = 2.0*sqrt(M_PI*calA0*a0)/NV;
 
+    Verticies.resize(NV);
+    Forces.resize(NV);
+
+    for(unsigned int i=0;i<NV;i++){
+      Verticies[i][0] = r0*(cos(2.0*M_PI*(i-1.0)/(float)NV)) + x0;
+      Verticies[i][1] = r0*(sin(2.0*M_PI*(i-1.0)/(float)NV)) + y0;
+      Forces[i][0] = 0.0f;
+      Forces[i][0] = 0.0f;
+    }
+  }
+
+  float Cell2D::GetArea(){
+    float Area = 0.0f;
+    unsigned int j = NV-1;
+    for(unsigned int i = 0;i<NV;i++){
+      Area += 0.5 * ((Verticies[j][0] + Verticies[i][0]) * (Verticies[j][1] - Verticies[i][1]));
+      j = i;
+    }
+    if(Area < 0.0f){
+      Area = -Area;
+    }
+    return Area;
+  }
+
+  float Cell2D::GetPerim(){
+    float dx,dy,dist=0.0;
+    for(unsigned int i=0; i<NV-1;i++){
+      dx = Verticies[i+1][0] - Verticies[i][0];
+      dy = Verticies[i+1][1] - Verticies[i][1];
+      dist += sqrt(dx*dx + dy*dy);
+    }
+    dx = Verticies[NV][0] - Verticies[0][0];
+    dy = Verticies[NV][1] - Verticies[0][1];    
+    dist += sqrt(dx*dx + dy*dy);
+    return dist;
   }
 
   Cell3D::Cell3D(std::array<float,3> starting_point,float  calA, float _r0){
