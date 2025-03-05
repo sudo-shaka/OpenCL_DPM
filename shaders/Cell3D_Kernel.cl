@@ -114,39 +114,36 @@ __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, 
 
   float4 A = pos1 - pos0;
   float4 B = pos2 - pos0;
-  bool isnormal = ((A[0]*B[1] - A[1]*B[0]) < 0.0f);
+  bool isnormal = (A.x*B.y - A.y*B.x) < 0.0f;
+  if(!isnormal){
+    return;
+  }
 
-  float4 surfacePoint0 = (float4)(pos0[0], pos0[1], 0.0f, 0.0f);
-  float4 surfacePoint1 = (float4)(pos1[0], pos1[1], 0.0f, 0.0f);
-  float4 surfacePoint2 = (float4)(pos2[0], pos2[1], 0.0f, 0.0f);
-
-  int4 isunder = (int4)(0,0,0,0);
 
   if(pos0[2] < 0.0f){
     Forces[vert_indicies[0]][2] -= Ks[ci] * (pos0[2]/l0[ci]) * (1.0f/3.0f);
-    isunder[0] = 1;
 }
   if(pos1[2] < 0.0f){
     Forces[vert_indicies[1]][2] -= Ks[ci] * (pos1[2]/l0[ci]) * (1.0f/3.0f);
-    isunder[1] = 1;
   }
   if(pos2[2] < 0.0f){
     Forces[vert_indicies[2]][2] -= Ks[ci] * (pos2[2]/l0[ci]) * (1.0f/3.0f);
-    isunder[2] = 1;
   }
 
   float4 COM = GetCOM(Verts, ci);
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  if(isnormal && !isunder[0] && pos0[2] < l0[ci]){
-    Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos0[2])/l0[ci]) * normalize(surfacePoint0 - COM);
+  if(pos0[2] < l0[ci] && pos1[2] < l0[ci] && pos2[2] < l0[ci]){
+    Forces[vert_indicies[0]] += (1.0f/3.0f) * Ks[ci] * normalize(pos0 - COM);
+    Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * normalize(pos1 - COM);
+    Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * normalize(pos2 - COM);
   }
-  if(isnormal && !isunder[1] && pos1[2] < l0[ci]){
-    Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos1[2])/l0[ci]) * normalize(surfacePoint1 - COM);
+  /*if(pos1[2] < l0[ci]){
+    //Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * normalize(pos1 - COM);
   }
-  if(isnormal && !isunder[2] && pos2[2] < l0[ci]){
-    Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * ((1.0f - pos2[2])/l0[ci]) * normalize(surfacePoint2 - COM);
-  }
+  if(pos2[2] < l0[ci]){
+    //Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * normalize(pos2 - COM);
+  }*/
 }
 
 __kernel void RepellingForces(
@@ -223,7 +220,7 @@ __kernel void RepellingForces(
       }
 
       // Calculate the repelling force and update the forces acting on the vertices
-      float4 force = Kc * normalize(COM - faceCOM) * (dist/l0[ci]);
+      float4 force = Kc * normalize(faceCOM - faceCOMj) * (dist/l0[ci]);
       Forces[vert_indicies[0]] += force;
       Forces[vert_indicies[1]] += force;
       Forces[vert_indicies[2]] += force;

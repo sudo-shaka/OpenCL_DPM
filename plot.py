@@ -17,8 +17,8 @@ def PlotTissue3D(T):
     for face in Faces:
       vx, vy, vz = [x[i] for i in face],[y[i] for i in face],[z[i] for i in face]
       if max(vx) - min(vx) <= T.L/2 and max(vy) - min(vy) <= T.L/2 and max(vz) - min(vz) <= T.L/2:
-        ax.plot(vx, vy ,vz, 'k-',alpha=0.6)  # Close the loop by adding the first vertex at the end
-    ax.scatter(x, y, z)
+        ax.plot(vx, vy ,vz,color='gray',alpha=0.6)  # Close the loop by adding the first vertex at the end
+    ax.scatter(x, y, z,alpha=1)
 
   ax.set_xlim(0,T.L)
   ax.set_ylim(0,T.L)
@@ -27,6 +27,10 @@ def PlotTissue3D(T):
 
 def PlotTissue2D(T):
   Faces = T.Cells[0].GetFaces()
+  np.random.seed(1)
+  r1 = np.random.rand(T.NCELLS)
+  r2 = np.random.rand(T.NCELLS)
+  r3 = np.random.rand(T.NCELLS)
   for ci in range(T.NCELLS):
     pos = T.Cells[ci].GetPositions()
     if(np.isnan(pos).any()):
@@ -37,8 +41,8 @@ def PlotTissue2D(T):
       vx, vy= [x[i] for i in face],[y[i] for i in face]
 
       if max(vx) - min(vx) <= T.L/2 and max(vy) - min(vy) <= T.L/2:
-        plt.plot(vx, vy, 'k-',alpha=0.6)  # Close the loop by adding the first vertex at the end
-    plt.scatter(x, y)
+        plt.plot(vx, vy,color=(r1[ci],r2[ci],r3[ci]))  # Close the loop by adding the first vertex at the end
+    plt.scatter(x, y,color=(r1[ci],r2[ci],r3[ci]))
 
   plt.xlim(0,T.L)
   plt.ylim(0,T.L)
