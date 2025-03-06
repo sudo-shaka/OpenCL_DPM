@@ -12,22 +12,26 @@
 #include "readKernel.hpp"
 
 namespace DPM{
-  Cell2D::Cell2D(float x0, float y0, float CalA,unsigned int numVerts, float _a0){
+  Cell2D::Cell2D(float x0, float y0, float CalA,unsigned int numVerts, float _r0){
+    // Initialize number of vertices
     NV = numVerts;
-    calA0 = CalA*(NV*tan(M_PI/NV)/M_PI);
-    a0 = _a0;
-    r0 = sqrt((2.0f*a0)/NV*sin((2.0*M_PI)/NV));
-    l0 = 2.0*sqrt(M_PI*calA0*a0)/NV;
+    r0 = _r0;
+    // Calculate initial shape parameters
+    calA0 = CalA * (NV * tan(M_PI / NV) / M_PI);
 
+    // Resize vectors to hold vertices and forces
     Verticies.resize(NV);
     Forces.resize(NV);
 
-    for(unsigned int i=0;i<NV;i++){
-      Verticies[i][0] = r0*(cos(2.0*M_PI*(i-1.0)/(float)NV)) + x0;
-      Verticies[i][1] = r0*(sin(2.0*M_PI*(i-1.0)/(float)NV)) + y0;
+    // Initialize vertices positions and forces
+    for (unsigned int i = 0; i < NV; i++) {
+      Verticies[i][0] = r0 * (cos(2.0 * M_PI * (i + 1.0) / (float)NV)) + x0;
+      Verticies[i][1] = r0 * (sin(2.0 * M_PI * (i + 1.0) / (float)NV)) + y0;
       Forces[i][0] = 0.0f;
-      Forces[i][0] = 0.0f;
+      Forces[i][1] = 0.0f;
     }
+    a0 = GetArea();
+    l0 = 2.0 * sqrt(M_PI * calA0 * a0) / (float)NV;
   }
 
   float Cell2D::GetArea(){

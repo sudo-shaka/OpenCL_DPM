@@ -119,6 +119,7 @@ namespace DPM{
     std::vector<float> Ka;
     std::vector<float> l0;
     std::vector<float> a0;
+    std::vector<float> r0;
     std::vector<float> Kl;
     std::vector<float> Kb;
     std::vector<unsigned int> NV;
@@ -130,6 +131,7 @@ namespace DPM{
       l0.push_back(cells[ci].l0);
       a0.push_back(cells[ci].a0);
       NV.push_back(cells[ci].NV);
+      r0.push_back(cells[ci].r0);
       for(unsigned int vi=0;vi<cells[ci].NV;vi++){
         allVerts[ci * maxNV  + vi] = cells[ci].Verticies[vi];
       }
@@ -147,8 +149,9 @@ namespace DPM{
     cl::Buffer gpuKa(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, Ka.data());
     cl::Buffer gpuKl(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, Kl.data());
     cl::Buffer gpuKb(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, Kb.data());
-    cl::Buffer gpua0(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, l0.data());
-    cl::Buffer gpul0(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, a0.data());
+    cl::Buffer gpua0(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, a0.data());
+    cl::Buffer gpul0(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, l0.data());
+    cl::Buffer gpur0(context,CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (float)*NCELLS, r0.data());
 
     cl::Kernel AreaForceUpdates(program,"AreaForceUpdates");
     AreaForceUpdates.setArg(0,gpuVerts);
@@ -171,6 +174,15 @@ namespace DPM{
     BendingForceUpdates.setArg(4,gpua0);
     BendingForceUpdates.setArg(5,gpul0);
     cl::Kernel RepulsiveForceUpdate(program,"RepulsionForceUpdate");
+    RepulsiveForceUpdate.setArg(0,gpuVerts);
+    RepulsiveForceUpdate.setArg(1,gpuForces);
+    RepulsiveForceUpdate.setArg(2,gpuNV);
+    RepulsiveForceUpdate.setArg(3,gpur0);
+    RepulsiveForceUpdate.setArg(4,(int)PBC);
+    RepulsiveForceUpdate.setArg(5,L);
+    RepulsiveForceUpdate.setArg(6,Kre);
+
+//__kernel void RepulsionForceUpdate(__global float2* Verts, __global float2* Forces,__global int* NV,__global float* r0 ,int PBC, float L, float Kre){
     cl::Kernel AttractionForceUpdate(program,"AttractionForceUpdate");
     cl::Kernel EulerUpdate(program,"EulerUpdate");
     EulerUpdate.setArg(0,gpuVerts);
@@ -185,8 +197,8 @@ namespace DPM{
       queue.enqueueNDRangeKernel(AreaForceUpdates, cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(PerimeterForceUpdates, cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(BendingForceUpdates, cl::NullRange, globalSize);
-  //    queue.enqueueNDRangeKernel(AttractionForceUpdate, cl::NullRange, globalSize);
-  //    queue.enqueueNDRangeKernel(RepulsiveForceUpdate, cl::NullRange, globalSize);
+      //queue.enqueueNDRangeKernel(AttractionForceUpdate, cl::NullRange, globalSize);
+      queue.enqueueNDRangeKernel(RepulsiveForceUpdate, cl::NullRange, globalSize);
       if(step == nsteps-1){
         queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,2>)*NCELLS*maxNV, allForces.data());
       }
