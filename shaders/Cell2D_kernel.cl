@@ -2,9 +2,10 @@
 
 float2 GetCOM(__global float2* positions,int NV){
     int ci = get_global_id(0);
+    int NUM_VERTS = get_global_size(1);
     float2 com = (float2) 0.0f;
     for(int i = 0; i < NV; i++){
-        com += positions[ci * NV + i];
+        com += positions[ci * NUM_VERTS + i];
     }
     return com / (float)NV;
 }
@@ -59,7 +60,7 @@ __kernel void BendingForceUpdates(__global float2* Verts, __global float2* Force
     if(vi == 1){
         im2 = ci* NUM_VERTS + NV[ci]-1;
     }
-        barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     // Calculate the differences in vertex positions
     float lvx = Verts[ip1].x - Verts[index].x;
@@ -201,7 +202,7 @@ __kernel void RepulsionForceUpdate(__global float2* Verts, __global float2* Forc
         float ftmp = Kre * (1-xij);
 
         // Update vertex position
-        Forces[index] += 0.5f * ftmp * (d / dist);
+        Forces[index] += 0.5f * ftmp * normalize(d);
     }
 
 }
