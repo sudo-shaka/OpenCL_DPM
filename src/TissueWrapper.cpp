@@ -24,6 +24,7 @@ void init_Tissue2D(py::module &m){
         .def_readonly("L", &DPM::Tissue2D::L)
         .def_readonly("PBC", &DPM::Tissue2D::PBC)
         .def_readwrite("Kre",&DPM::Tissue2D::Kre)
+        .def_readwrite("Kat",&DPM::Tissue2D::Kat)
         .def("CLEulerUpdate", &DPM::Tissue2D::CLEulerUpdate)
         .def("Disperse", &DPM::Tissue2D::Disperse)
         ;

@@ -192,10 +192,10 @@ __kernel void RepulsionForceUpdate(__global float2* Verts, __global float2* Forc
     if (overlaps) {
         float2 COM = GetCOM(Verts, NV[ci]);
         float2 d = COM - Verts[index];
+        if(PBC){
+            d -= L*round(d/L);
+        }
         float dist = sqrt(dot(d, d));
-
-        // Apply periodic boundary conditions to distance
-        dist -= L * round(dist / L);
 
         // Calculate repulsion force
         xij = dist / (2 * r0[ci]);
@@ -207,10 +207,11 @@ __kernel void RepulsionForceUpdate(__global float2* Verts, __global float2* Forc
 
 }
 
-__kernel void AttractionForceUpdate(__global int* NV){
+__kernel void AttractionForceUpdate(__global float2* Verts, __global float2* Forces,__global int* NV,__global float* l0,int PBC,float L,float Kat){
     int ci = get_global_id(0);
-    int NUM_VERTS = get_global_size(1);
     int vi = get_global_id(1);
+    int NUM_VERTS = get_global_size(1);
+    int NCELLS = get_global_size(0);
 
     int index = ci * NUM_VERTS + vi;
     int ip1 = index+1;
@@ -231,6 +232,24 @@ __kernel void AttractionForceUpdate(__global int* NV){
     }
     if(vi == 1){
         im2 += NV[ci];
+    }
+    for(int cj=0;cj<NCELLS;cj++){
+        if(cj == ci){
+            continue;
+        }
+        for(int vj = 0; vj < NV[cj]; vj++){
+            float2 rij = Verts[cj * NUM_VERTS + vj] - Verts[index];
+            if(PBC){
+                rij -= L*round(rij/L);
+            }
+            float dist = sqrt(dot(rij,rij));
+            if(dist < l0[ci]){
+                //float ftmp = Kat * (dist/l0[ci] - 1.0f);
+                float ftmp = Kat/NV[ci] * dist/l0[ci];
+                Forces[index] += ftmp * normalize(rij);
+            }
+        }
+        
     }
 }
 

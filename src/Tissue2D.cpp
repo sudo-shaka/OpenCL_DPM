@@ -181,9 +181,14 @@ namespace DPM{
     RepulsiveForceUpdate.setArg(4,(int)PBC);
     RepulsiveForceUpdate.setArg(5,L);
     RepulsiveForceUpdate.setArg(6,Kre);
-
-//__kernel void RepulsionForceUpdate(__global float2* Verts, __global float2* Forces,__global int* NV,__global float* r0 ,int PBC, float L, float Kre){
     cl::Kernel AttractionForceUpdate(program,"AttractionForceUpdate");
+    AttractionForceUpdate.setArg(0,gpuVerts);
+    AttractionForceUpdate.setArg(1,gpuForces);
+    AttractionForceUpdate.setArg(2,gpuNV);
+    AttractionForceUpdate.setArg(3,gpul0);
+    AttractionForceUpdate.setArg(4,(int)PBC);
+    AttractionForceUpdate.setArg(5,L);
+    AttractionForceUpdate.setArg(6,Kat);
     cl::Kernel EulerUpdate(program,"EulerUpdate");
     EulerUpdate.setArg(0,gpuVerts);
     EulerUpdate.setArg(1,gpuForces);
@@ -197,7 +202,7 @@ namespace DPM{
       queue.enqueueNDRangeKernel(AreaForceUpdates, cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(PerimeterForceUpdates, cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(BendingForceUpdates, cl::NullRange, globalSize);
-      //queue.enqueueNDRangeKernel(AttractionForceUpdate, cl::NullRange, globalSize);
+      queue.enqueueNDRangeKernel(AttractionForceUpdate, cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(RepulsiveForceUpdate, cl::NullRange, globalSize);
       if(step == nsteps-1){
         queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,2>)*NCELLS*maxNV, allForces.data());
