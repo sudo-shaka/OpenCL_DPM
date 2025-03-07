@@ -4,7 +4,22 @@ ctypes.CDLL("libOpenCL.so", mode=ctypes.RTLD_GLOBAL)
 import numpy as np
 import matplotlib.pyplot as plt
 
-def PlotTissue3D(T):
+def Plot2DTissue2D(T):
+    for ci in range(T.NCELLS):
+        pos=np.array(T.Cells[ci].Verts);
+        pos=np.mod(pos.T,T.L)
+        force = np.array(T.Cells[ci].Forces)
+        force = force.T
+        force = force[0] + force[1]
+        plt.scatter(pos[0],pos[1],c=force,cmap='coolwarm')
+        np.append(pos[0],pos[0][0])
+        np.append(pos[1],pos[1][0])
+        if np.max(pos[0]) - np.min(pos[0]) > T.L/2 or np.max(pos[1]) - np.min(pos[1]) > T.L/2:
+          continue
+        plt.plot(pos[0],pos[1],'-k')
+    plt.axis('equal')
+
+def Plot3DTissue3D(T):
   Faces = T.Cells[0].GetFaces()
   fig = plt.figure(figsize=(10,10))
   ax = fig.add_subplot(projection='3d')
@@ -25,7 +40,7 @@ def PlotTissue3D(T):
   ax.set_zlim(0,T.L)
 
 
-def PlotTissue2D(T):
+def Plot3DTissue2D(T):
   Faces = T.Cells[0].GetFaces()
   np.random.seed(1)
   r1 = np.random.rand(T.NCELLS)

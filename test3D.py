@@ -21,9 +21,12 @@ T.Disperse2D()
 
 Faces = T.Cells[0].GetFaces()
 nsteps = 100
-nout = 10
-for i in progressbar(range(nout)):
-  plot.Plot3DTissue2D(T)
-  plt.savefig('/tmp/test_' + str(i) + '.png')
-  plt.close()
+nout = 1
+for i in range(nout):
+  print("Starting 3D simulation with "+str(T.NCELLS)+" particles for "+str(nsteps)+" timesteps...")
   T.CLEulerUpdate(nsteps, 0.001)
+  plot.Plot3DTissue2D(T)
+  filename = "test.png"
+  plt.savefig(filename)
+  print("figure saved to " + filename)
+  plt.close()
