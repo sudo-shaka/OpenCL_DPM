@@ -20,11 +20,11 @@ T.Kre = 10.0
 T.Disperse2D()
 
 Faces = T.Cells[0].GetFaces()
-nsteps = 500
+nsteps = 100
 nout = 1
 for i in range(nout):
   print("Starting 3D simulation with "+str(T.NCELLS)+" particles for "+str(nsteps)+" timesteps...")
-  T.CLEulerUpdate(nsteps, 0.001)
+  T.CLEulerUpdate(nsteps, 0.005)
   print("Plotting figure...")
   plot.Plot3DTissue2D(T)
   filename = "test.png"

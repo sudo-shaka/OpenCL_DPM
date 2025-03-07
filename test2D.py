@@ -15,7 +15,7 @@ c2.Ka = 0.1
 c2.Kl = 1.0
 c2.Kb = 0.05
 
-T = clDPM.Tissue2D([c,c2]*20,0.9); #input is list of cells and the initial packing fraction
+T = clDPM.Tissue2D([c,c2]*200,0.9); #input is list of cells and the initial packing fraction
 T.Kre = 1.0
 T.Kat = 0.5
 T.Disperse()

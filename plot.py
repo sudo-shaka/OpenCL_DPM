@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def Plot2DTissue2D(T):
+    plt.figure(figsize=(10,10))
     for ci in range(T.NCELLS):
         pos=np.array(T.Cells[ci].Verts);
         pos=np.mod(pos.T,T.L)
