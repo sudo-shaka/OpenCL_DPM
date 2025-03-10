@@ -22,6 +22,55 @@ float4 GetCOM(__global float4* Verts ,int ci){
   return COM/NUM_VERTICES;
 }
 
+float crossProduct(float4 p0, float4 p1, float4 p2){
+  return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+}
+
+int findReferencePoint(__global float4* Verts){
+  int ci = get_global_id(0);
+  int refIndex = ci;
+  for(int i= ci*NUM_VERTICES; i < (ci+1) * NUM_VERTICES; i++){
+    if(Verts[i].y < Verts[refIndex].y || (Verts[i].y == Verts[refIndex].y && Verts[i].x < Verts[refIndex].x)){
+      refIndex = i;
+    }
+  } 
+  return refIndex;
+}
+
+float polarAngle(float4 p0, float4 p1){
+  return atan2(p1.y - p0.y, p1.x - p0.x);
+}
+
+int ConvexHullIndexes(__global float4* Verts, int hullIndexes[NUM_VERTICES]){
+  int ci = get_global_id(0);
+  int refIndex = findReferencePoint(Verts);
+  float4 refPoint = Verts[refIndex];
+  for(int i = ci*NUM_VERTICES; i < (ci+1) * NUM_VERTICES; i++){
+    for(int j=0; j < NUM_VERTICES - i -1;j++){
+      if(polarAngle(refPoint,Verts[j])>polarAngle(refPoint,Verts[j+1])){
+        float4 temp = Verts[j];
+        Verts[j] = Verts[j+1];
+        Verts[j+1] = temp;
+      }
+    }
+  }
+
+  int hullSize = NUM_VERTICES;
+  hullIndexes[0] = refIndex;
+  hullIndexes[1] = ci*NUM_VERTICES + 1;
+  hullIndexes[2] = ci*NUM_VERTICES + 2;
+  for(int i = (ci * NUM_VERTICES) + 3; i < (ci+1) * NUM_VERTICES; i++){
+    while(hullSize > 2 && crossProduct(Verts[hullIndexes[hullSize-2]], Verts[hullIndexes[hullSize-1]], Verts[i] - Verts[i]) <= 0.0f){
+      hullSize--;
+    }
+    hullIndexes[hullSize] = i;
+    hullSize++;
+  }
+  hullIndexes[hullSize] = NULL;
+  return hullSize;
+}
+
+
 __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, __global float* Kv, __global float* v0){
   uint ci = get_global_id(0);
   uint fi = get_global_id(1);
@@ -230,7 +279,7 @@ __kernel void RepellingForces(
   }
 }
 
-__kernel void AllVertAttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
+__kernel void AllVertAVttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
   float dist;
   uint ci = get_global_id(0);
   uint vi = get_global_id(1);
@@ -238,6 +287,41 @@ __kernel void AllVertAttraction(__global float4* Verts, __global float4* Forces,
     return;
   }
   uint vert_index = ci * NUM_VERTICES + vi;
+  float4 p1 = Verts[vert_index];
+  for(int cj=0;cj<NCELLS;cj++){
+    if(ci != cj){
+      for(int vj=0;vj<NUM_VERTICES;vj++){
+        float4 p2 = Verts[cj * NUM_VERTICES + vj];
+        float4 delta = p2-p1;
+        if(PBC){
+          delta -= L*round(delta/L);
+        }
+        dist = sqrt(dot(delta,delta));
+        if(dist < l0[ci]){
+          Forces[vert_index] -= Kat * 0.5f * (dist/l0[ci] - 1.0f) * normalize(delta);
+          Forces[cj * NUM_VERTICES + vj] += Kat * 0.5f * (dist/l0[ci] - 1.0f) * normalize(delta);
+        }
+      }
+    }
+  }
+}
+
+__kernel void JunctionAttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
+  float dist;
+  uint ci = get_global_id(0);
+  uint vi = get_global_id(1);
+  if(Kat == 0){
+    return;
+  }
+  uint vert_index = ci * NUM_VERTICES + vi;
+  int hullIdx[NUM_VERTICES];
+  int nHull = ConvexHullIndexes(Verts, hullIdx);
+  for(int i=0; i<nHull; i++){
+    if (hullIdx[i] == vert_index){
+      return;
+    }
+  }
+  
   float4 p1 = Verts[vert_index];
   for(int cj=0;cj<NCELLS;cj++){
     if(ci != cj){
