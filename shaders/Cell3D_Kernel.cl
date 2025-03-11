@@ -84,19 +84,22 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   float4 pos2 = Verts[vert_indicies[2]];
 
   // Calculate the volume contribution of the current face using the scalar triple product
-  float volume = 0.0f;
-  for(uint i=0;i<NUM_FACES;i++){
-    uint4 face = VertIdxMat[i];
-    float4 vert0  = Verts[ci*NUM_VERTICES+face[0]];
-    float4 vert1  = Verts[ci*NUM_VERTICES+face[1]];
-    float4 vert2  = Verts[ci*NUM_VERTICES+face[2]];
-    float volumepart = dot(cross(vert1,vert2),vert0);
-    volume += volumepart;
+  __local float localVolume;
+  if(fi == 0){
+    float volume = 0.0f;
+    for(uint i=0;i<NUM_FACES;i++){
+      uint4 face = VertIdxMat[i];
+      float4 vert0  = Verts[ci*NUM_VERTICES+face[0]];
+      float4 vert1  = Verts[ci*NUM_VERTICES+face[1]];
+      float4 vert2  = Verts[ci*NUM_VERTICES+face[2]];
+      float volumepart = dot(cross(vert1,vert2),vert0);
+      volume += volumepart;
+    }
+    volume = fabs(volume) / 6.0f;
+    localVolume = volume;
   }
-  volume = fabs(volume) / 6.0f;
-
   // Calculate the volume strain
-  float volumeStrain = (volume / v0[ci]) - 1.0;
+  float volumeStrain = (localVolume / v0[ci]) - 1.0;
 
   // Initialize force vectors for the vertices
   float4 force0 = (float4)(0.0f);
