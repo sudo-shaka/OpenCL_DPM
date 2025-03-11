@@ -208,7 +208,7 @@ namespace DPM{
     EulerUpdate.setArg(1, gpuForces);
     EulerUpdate.setArg(2, dt);
 
-    cl::NDRange globalSize(NCELLS,NF);
+    cl::NDRange globalSize(NF,NCELLS);
     cl::CommandQueue queue(context,device);
 
     // Run the kernels
@@ -220,7 +220,7 @@ namespace DPM{
       if(step == nsteps-1){
         queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allForces.data());
       }
-      queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NCELLS,NV));
+      queue.enqueueNDRangeKernel(EulerUpdate,cl::NullRange, cl::NDRange(NV,NCELLS));
     }
     // Read the results
     queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allVerts.data());

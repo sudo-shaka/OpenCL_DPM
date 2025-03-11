@@ -27,7 +27,7 @@ float crossProduct(float4 p0, float4 p1, float4 p2){
 }
 
 int findReferencePoint(__global float4* Verts){
-  int ci = get_global_id(0);
+  int ci = get_global_id(1);
   int refIndex = ci;
   for(int i= ci*NUM_VERTICES; i < (ci+1) * NUM_VERTICES; i++){
     if(Verts[i].y < Verts[refIndex].y || (Verts[i].y == Verts[refIndex].y && Verts[i].x < Verts[refIndex].x)){
@@ -42,7 +42,7 @@ float polarAngle(float4 p0, float4 p1){
 }
 
 int ConvexHullIndexes(__global float4* Verts, int hullIndexes[NUM_VERTICES]){
-  int ci = get_global_id(0);
+  int ci = get_global_id(1);
   int refIndex = findReferencePoint(Verts);
   float4 refPoint = Verts[refIndex];
   for(int i = ci*NUM_VERTICES; i < (ci+1) * NUM_VERTICES; i++){
@@ -72,8 +72,12 @@ int ConvexHullIndexes(__global float4* Verts, int hullIndexes[NUM_VERTICES]){
 
 
 __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, int NCELLS, __global float* Kv, __global float* v0){
-  uint ci = get_global_id(0);
-  uint fi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint fi = get_global_id(0);
+  uint gi = get_group_id(1);
+  uint li = get_local_id(0);
+
+
   if(Kv[ci] == 0){
     return;
   }
@@ -98,8 +102,10 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
     volume = fabs(volume) / 6.0f;
     localVolume = volume;
   }
+  barrier(CLK_LOCAL_MEM_FENCE);
   // Calculate the volume strain
-  float volumeStrain = (localVolume / v0[ci]) - 1.0;
+  float volume = localVolume;
+  float volumeStrain = (volume / v0[ci]) - 1.0;
 
   // Initialize force vectors for the vertices
   float4 force0 = (float4)(0.0f);
@@ -116,11 +122,12 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
   Forces[vert_indicies[0]] -= Kv[ci] * third * volumeStrain * normal;
   Forces[vert_indicies[1]] -= Kv[ci] * third * volumeStrain * normal;
   Forces[vert_indicies[2]] -= Kv[ci] * third * volumeStrain * normal;
+  barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ka, __global float* l0){
-  uint ci = get_global_id(0);
-  uint fi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint fi = get_global_id(0);
   if(Ka[ci] == 0){
     return;
   }
@@ -153,8 +160,8 @@ __kernel void SurfaceAreaForceUpdate(__global uint4* VertIdxMat, __global float4
 }
 
 __kernel void StickToSurface(__global uint4* VertIdxMat,__global float4* Verts, __global float4* Forces, uint NCELLS, __global float* Ks, __global float* l0){
-  uint ci = get_global_id(0);
-  uint fi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint fi = get_global_id(0);
   if(Ks[ci] == 0){
     return;
   }
@@ -209,8 +216,8 @@ __kernel void RepellingForces(
      float L)
   {
   // Get the global IDs for the current cell and face
-  uint ci = get_global_id(0);
-  uint fi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint fi = get_global_id(0);
 
   if(Kc == 0){
     return;
@@ -284,8 +291,8 @@ __kernel void RepellingForces(
 
 __kernel void AllVertAVttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
   float dist;
-  uint ci = get_global_id(0);
-  uint vi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint vi = get_global_id(0);
   if(Kat == 0){
     return;
   }
@@ -311,8 +318,8 @@ __kernel void AllVertAVttraction(__global float4* Verts, __global float4* Forces
 
 __kernel void JunctionAttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
   float dist;
-  uint ci = get_global_id(0);
-  uint vi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint vi = get_global_id(0);
   if(Kat == 0){
     return;
   }
@@ -345,8 +352,8 @@ __kernel void JunctionAttraction(__global float4* Verts, __global float4* Forces
 }
 
 __kernel void EulerPosition(__global float4* Verts, __global float4* Forces ,float dt){
-  uint ci = get_global_id(0);
-  uint vi = get_global_id(1);
+  uint ci = get_global_id(1);
+  uint vi = get_global_id(0);
 
 
   uint vert_index = ci * NUM_VERTICES + vi;
