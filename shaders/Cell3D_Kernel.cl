@@ -102,7 +102,12 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 
   // Calculate the volume contribution of the current face using the scalar triple product
   __local float localVolume;
-  if(fi % 25 == 0){ //for some reason you need to update the local volume every 25 faces (gpu block size?)
+  if(fi == 0){
+    localVolume = getVolume(VertIdxMat, Verts, ci);
+  }
+
+  //sometimes the localVolume isnt properly chared for all verts. This is a hacky fix
+  if(localVolume == 0){
     localVolume = getVolume(VertIdxMat, Verts, ci);
   }
 
@@ -214,7 +219,6 @@ __kernel void RepellingForces(
     uint NCELLS,
     __global float* l0,
      float Kc,
-     float Kat,
      int PBC,
      float L)
   {
@@ -277,13 +281,7 @@ __kernel void RepellingForces(
       // Calculate the distance between the two face centers of mass
       float dist = sqrt(dot(d,d));
       // Skip if the faces have not crossed eachother or if the distance is greater than the cutoff distance
-      if(dist > l0[ci]){
-        continue;
-      }
-      if(dot(d, normali) < 0.0f && Kat != 0){
-        Forces[vert_indicies[0]] -= Kat * normalize(COM - pos0) * (dist/l0[ci]);
-        Forces[vert_indicies[1]] -= Kat * normalize(COM - pos1) * (dist/l0[ci]);
-        Forces[vert_indicies[2]] -= Kat * normalize(COM - pos2) * (dist/l0[ci]);
+      if(dot(d, normali) < 0.0f || dist > l0[ci]){
         continue;
       }
 

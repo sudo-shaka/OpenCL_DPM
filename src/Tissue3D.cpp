@@ -200,9 +200,8 @@ namespace DPM{
     RepellingForces.setArg(3, NCELLS);
     RepellingForces.setArg(4, gpul0);
     RepellingForces.setArg(5, Kre);
-    RepellingForces.setArg(6, Kat);
-    RepellingForces.setArg(7, PBC);
-    RepellingForces.setArg(8, L);
+    RepellingForces.setArg(6, PBC);
+    RepellingForces.setArg(7, L);
     /*cl::Kernel AllVertAttraction(program,"AllVertAttraction");
     AllVertAttraction.setArg(0, gpuVerts);
     AllVertAttraction.setArg(1, gpuForces);

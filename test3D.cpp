@@ -68,7 +68,7 @@ int main(){
   Cell.Ka = 1;
   Cell.Ks = 1;
 
-  Cell.CLShapeEuler(1, 0.001);
+  Cell.CLShapeEuler(100, 0.005);
 
   for(int i=0;i<(int)Cell.NV;i++){
     std::cout << Cell.Verts[i][0] << "," << Cell.Verts[i][1] << "," << Cell.Verts[i][2] << std::endl;

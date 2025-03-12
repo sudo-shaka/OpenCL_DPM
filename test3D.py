@@ -15,8 +15,9 @@ c2.Ka = 0.6
 c2.Kv = 1.5
 c2.Ks = 5.0
 
-T = clDPM.Tissue3D([c2,c]*21,0.35) #input is: list of cell, and packing fraction (3D)
+T = clDPM.Tissue3D([c2,c]*50,0.35) #input is: list of cell, and packing fraction (3D)
 T.Kre = 10.0
+T.Kat = 0.0
 T.Disperse2D()
 
 Faces = T.Cells[0].GetFaces()
