@@ -14,6 +14,19 @@
 constant uint NUM_FACES = 320;
 constant uint NUM_VERTICES = 162;
 
+float getVolume(const __global uint4* VertIdxMat, __global float4* Verts, int ci){
+  float volume = 0.0f;
+  for(int i = 0; i < NUM_FACES; i++){
+    uint4 face = VertIdxMat[i];
+    float4 vert0  = Verts[ci*NUM_VERTICES+face[0]];
+    float4 vert1  = Verts[ci*NUM_VERTICES+face[1]];
+    float4 vert2  = Verts[ci*NUM_VERTICES+face[2]];
+    float volumepart = dot(cross(vert1,vert2),vert0);
+    volume += volumepart;
+  }
+  return fabs(volume) / 6.0f;
+}
+
 float4 GetCOM(__global float4* Verts ,int ci){
   float4 COM = (float4)(0.0f,0.0f,0.0f,0.0f);
   for(int i = 0; i < NUM_VERTICES; i++){
@@ -89,23 +102,12 @@ __kernel void VolumeForceUpdate(__global const uint4* VertIdxMat, __global float
 
   // Calculate the volume contribution of the current face using the scalar triple product
   __local float localVolume;
-  if(fi == 0){
-    float volume = 0.0f;
-    for(uint i=0;i<NUM_FACES;i++){
-      uint4 face = VertIdxMat[i];
-      float4 vert0  = Verts[ci*NUM_VERTICES+face[0]];
-      float4 vert1  = Verts[ci*NUM_VERTICES+face[1]];
-      float4 vert2  = Verts[ci*NUM_VERTICES+face[2]];
-      float volumepart = dot(cross(vert1,vert2),vert0);
-      volume += volumepart;
-    }
-    volume = fabs(volume) / 6.0f;
-    localVolume = volume;
+  if(fi % 25 == 0){ //for some reason you need to update the local volume every 25 faces (gpu block size?)
+    localVolume = getVolume(VertIdxMat, Verts, ci);
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
+
   // Calculate the volume strain
-  float volume = localVolume;
-  float volumeStrain = (volume / v0[ci]) - 1.0;
+  float volumeStrain = (localVolume / v0[ci]) - 1.0;
 
   // Initialize force vectors for the vertices
   float4 force0 = (float4)(0.0f);
