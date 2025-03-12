@@ -214,6 +214,7 @@ __kernel void RepellingForces(
     uint NCELLS,
     __global float* l0,
      float Kc,
+     float Kat,
      int PBC,
      float L)
   {
@@ -276,7 +277,13 @@ __kernel void RepellingForces(
       // Calculate the distance between the two face centers of mass
       float dist = sqrt(dot(d,d));
       // Skip if the faces have not crossed eachother or if the distance is greater than the cutoff distance
-      if(dot(d, normali) < 0.0f || dist > l0[ci]){
+      if(dist > l0[ci]){
+        continue;
+      }
+      if(dot(d, normali) < 0.0f && Kat != 0){
+        Forces[vert_indicies[0]] -= Kat * normalize(COM - pos0) * (dist/l0[ci]);
+        Forces[vert_indicies[1]] -= Kat * normalize(COM - pos1) * (dist/l0[ci]);
+        Forces[vert_indicies[2]] -= Kat * normalize(COM - pos2) * (dist/l0[ci]);
         continue;
       }
 
@@ -291,13 +298,13 @@ __kernel void RepellingForces(
   }
 }
 
-__kernel void AllVertAVttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
-  float dist;
-  uint ci = get_global_id(1);
-  uint vi = get_global_id(0);
+__kernel void AllVertAttraction(__global float4* Verts, __global float4* Forces, __global float* l0, float L , int NCELLS, int PBC, float Kat){
   if(Kat == 0){
     return;
   }
+  uint ci = get_global_id(1);
+  uint vi = get_global_id(0);
+  float dist;
   uint vert_index = ci * NUM_VERTICES + vi;
   float4 p1 = Verts[vert_index];
   for(int cj=0;cj<NCELLS;cj++){

@@ -8,6 +8,7 @@ void init_Tissue3D(py::module &m){
     py::class_<DPM::Tissue3D> (m, "Tissue3D")
         .def(py::init<std::vector<DPM::Cell3D>, float>())
         .def_readwrite("Kre", &DPM::Tissue3D::Kre)
+        .def_readwrite("Kat", &DPM::Tissue3D::Kat)
         .def_readwrite("Cells", &DPM::Tissue3D::Cells)
         .def_readonly("NCELLS", &DPM::Tissue3D::NCELLS)
         .def_readonly("L", &DPM::Tissue3D::L)

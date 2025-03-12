@@ -200,8 +200,18 @@ namespace DPM{
     RepellingForces.setArg(3, NCELLS);
     RepellingForces.setArg(4, gpul0);
     RepellingForces.setArg(5, Kre);
-    RepellingForces.setArg(6, PBC);
-    RepellingForces.setArg(7, L);
+    RepellingForces.setArg(6, Kat);
+    RepellingForces.setArg(7, PBC);
+    RepellingForces.setArg(8, L);
+    /*cl::Kernel AllVertAttraction(program,"AllVertAttraction");
+    AllVertAttraction.setArg(0, gpuVerts);
+    AllVertAttraction.setArg(1, gpuForces);
+    AllVertAttraction.setArg(2, gpul0);
+    AllVertAttraction.setArg(3, L);
+    AllVertAttraction.setArg(4, NCELLS);
+    AllVertAttraction.setArg(5, PBC);
+    AllVertAttraction.setArg(6, Kat);
+    */
 
     cl::Kernel EulerUpdate(program,"EulerPosition");
     EulerUpdate.setArg(0, gpuVerts);
@@ -217,6 +227,7 @@ namespace DPM{
       queue.enqueueNDRangeKernel(SurfaceAreaUpdateKernel,cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(StickToSurfaceUpdate,cl::NullRange, globalSize);
       queue.enqueueNDRangeKernel(RepellingForces,cl::NullRange, globalSize);
+      //queue.enqueueNDRangeKernel(AllVertAttraction,cl::NullRange, globalSize);
       if(step == nsteps-1){
         queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0, sizeof(std::array<float,4>) * NV * NCELLS, allForces.data());
       }
