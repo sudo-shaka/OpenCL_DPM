@@ -120,14 +120,15 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
   const int NV = Cell3D::NV;
 
   std::vector<cl_uint3> allFaces(NF);
-  std::vector<cl_float4> allVerts(NCELLS * NV);
-  std::vector<cl_float4> allForces(NCELLS * NV);
+  std::vector<cl_float3> allVerts(NCELLS * NV);
+  std::vector<cl_float3> allForces(NCELLS * NV);
   std::vector<float> Kv;
   std::vector<float> Ka;
   std::vector<float> Ks;
   std::vector<float> v0;
   std::vector<float> a0;
   std::vector<float> l0;
+  std::vector<float> volumes;
 
   auto &c = Cells[0];
   for (int fi = 0; fi < NF; fi++) {
@@ -141,12 +142,13 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
     v0.push_back(Cells[ci].v0);
     a0.push_back(Cells[ci].a0);
     l0.push_back(sqrt((Cells[ci].a0 * 4.0f) / sqrt(3.0f)));
+    volumes.push_back(c.GetVolume());
     for (int vi = 0; vi < NV; vi++) {
       int idx = ci * NV + vi;
       allVerts[idx] = {{Cells[ci].Verts[vi][0], Cells[ci].Verts[vi][1],
-                        Cells[ci].Verts[vi][2], 0.0}};
+                        Cells[ci].Verts[vi][2]}};
       allForces[idx] = {{Cells[ci].Forces[vi][0], Cells[ci].Forces[vi][1],
-                         Cells[ci].Forces[vi][2], 0.0}};
+                         Cells[ci].Forces[vi][2]}};
     }
   }
 
@@ -170,9 +172,9 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
   cl::Buffer gpuFaces(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                       sizeof(cl_uint3) * NF, allFaces.data());
   cl::Buffer gpuVerts(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                      sizeof(cl_float4) * NCELLS * NV, allVerts.data());
+                      sizeof(cl_float3) * NCELLS * NV, allVerts.data());
   cl::Buffer gpuForces(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                       sizeof(cl_float4) * NCELLS * NV, allForces.data());
+                       sizeof(cl_float3) * NCELLS * NV, allForces.data());
   cl::Buffer gpuKv(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                    sizeof(float) * NCELLS, Kv.data());
   cl::Buffer gpuKa(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -185,6 +187,8 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
                    sizeof(float) * NCELLS, a0.data());
   cl::Buffer gpul0(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                    sizeof(float) * NCELLS, l0.data());
+  cl::Buffer gpuVolumes(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                        sizeof(float) * NCELLS, volumes.data());
 
   // Create Kernels and set arguments (buffers)
   cl::Kernel VolumeUpdateKernel(program, "VolumeForceUpdate");
@@ -192,8 +196,9 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
   VolumeUpdateKernel.setArg(1, gpuVerts);
   VolumeUpdateKernel.setArg(2, gpuForces);
   VolumeUpdateKernel.setArg(3, NCELLS);
-  VolumeUpdateKernel.setArg(4, gpuv0);
-  VolumeUpdateKernel.setArg(5, gpuKv);
+  VolumeUpdateKernel.setArg(4, gpuKv);
+  VolumeUpdateKernel.setArg(5, gpuv0);
+  VolumeUpdateKernel.setArg(6, gpuVolumes);
 
   cl::Kernel SurfaceAreaUpdateKernel(program, "SurfaceAreaForceUpdate");
   SurfaceAreaUpdateKernel.setArg(0, gpuFaces);
@@ -248,14 +253,14 @@ void Tissue3D::CLEulerUpdate(int nsteps, float dt) {
     // queue.enqueueNDRangeKernel(AllVertAttraction,cl::NullRange, globalSize);
     if (step == nsteps - 1) {
       queue.enqueueReadBuffer(gpuForces, CL_TRUE, 0,
-                              sizeof(cl_float4) * NV * NCELLS,
+                              sizeof(cl_float3) * NV * NCELLS,
                               allForces.data());
     }
     queue.enqueueNDRangeKernel(EulerUpdate, cl::NullRange,
                                cl::NDRange(NV, NCELLS));
   }
   // Read the results
-  queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(cl_float4) * NV * NCELLS,
+  queue.enqueueReadBuffer(gpuVerts, CL_TRUE, 0, sizeof(cl_float3) * NV * NCELLS,
                           allVerts.data());
 
   // Update the cells
