@@ -35,7 +35,7 @@ int main() {
   DPM::Tissue3D Tissue(Cells, 0.35);
   Tissue.Kre = 50.0f;
   Tissue.Disperse2D();
-  Tissue.CLEulerUpdate(5000, 0.005);
+  Tissue.CLEulerUpdate(100, 0.005);
 
   for (int i = 0; i < (int)Tissue.NCELLS; i++) {
     for (int j = 0; j < (int)Tissue.Cells[i].NV; j++) {
