@@ -1,385 +1,241 @@
-/*
- * Updates the volume forces acting on the vertices of a 3D cell structure.
- *
- * @param VertIdxMat  Global memory pointer to the vertex index matrix.
- * @param Verts       Global memory pointer to the vertex positions.
- * @param Forces      Global memory pointer to the forces acting on the
- vertices.
- * @param NCELLS      Number of cells.
- * @param v0          Reference volume.
- * @param Kv          Volume stiffness coefficient.
-  int NUM_FACES = 320; //number of faces
-  int NUM_VERTICIES = 162; //number of vertices
-*/
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 constant uint NUM_FACES = 320;
 constant uint NUM_VERTICES = 162;
 
-float getVolume(const __global uint4 *VertIdxMat, __global float4 *Verts,
-                int ci) {
-  float volume = 0.0f;
-  for (int i = 0; i < NUM_FACES; i++) {
-    uint4 face = VertIdxMat[i];
-    float4 vert0 = Verts[ci * NUM_VERTICES + face[0]];
-    float4 vert1 = Verts[ci * NUM_VERTICES + face[1]];
-    float4 vert2 = Verts[ci * NUM_VERTICES + face[2]];
-    float volumepart = dot(cross(vert1, vert2), vert0);
-    volume += volumepart;
-  }
-  return fabs(volume) / 6.0f;
-}
+// ----------------------------- Utility functions -----------------------------
 
-float4 GetCOM(__global float4 *Verts, int ci) {
-  float4 COM = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+float3 GetCOM(__global float3 *Verts, int ci) {
+  float3 COM = (float3)(0.0f);
   for (int i = 0; i < NUM_VERTICES; i++) {
     COM += Verts[ci * NUM_VERTICES + i];
   }
   return COM / NUM_VERTICES;
 }
 
-float crossProduct(float4 p0, float4 p1, float4 p2) {
-  return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-}
-
-int findReferencePoint(__global float4 *Verts) {
-  int ci = get_global_id(1);
-  int refIndex = ci;
-  for (int i = ci * NUM_VERTICES; i < (ci + 1) * NUM_VERTICES; i++) {
-    if (Verts[i].y < Verts[refIndex].y ||
-        (Verts[i].y == Verts[refIndex].y && Verts[i].x < Verts[refIndex].x)) {
-      refIndex = i;
-    }
+float getVolume(const __global uint3 *VertIdxMat, __global float3 *Verts,
+                int ci) {
+  float volume = 0.0f;
+  for (int i = 0; i < NUM_FACES; i++) {
+    uint3 face = VertIdxMat[i];
+    float3 vert0 = Verts[ci * NUM_VERTICES + face.x];
+    float3 vert1 = Verts[ci * NUM_VERTICES + face.y];
+    float3 vert2 = Verts[ci * NUM_VERTICES + face.z];
+    float volumepart = dot(cross(vert1 - vert0, vert2 - vert0), vert0);
+    volume += volumepart;
   }
-  return refIndex;
+  return fabs(volume) / 6.0f;
 }
 
-float polarAngle(float4 p0, float4 p1) {
-  return atan2(p1.y - p0.y, p1.x - p0.x);
+float3 applyPBC(float3 delta, float L, int PBC) {
+  if (PBC)
+    delta -= L * round(delta / L);
+  return delta;
 }
 
-int ConvexHullIndexes(__global float4 *Verts, int hullIndexes[NUM_VERTICES]) {
-  int ci = get_global_id(1);
-  int refIndex = findReferencePoint(Verts);
-  float4 refPoint = Verts[refIndex];
-  for (int i = ci * NUM_VERTICES; i < (ci + 1) * NUM_VERTICES; i++) {
-    for (int j = 0; j < NUM_VERTICES - i - 1; j++) {
-      if (polarAngle(refPoint, Verts[j]) > polarAngle(refPoint, Verts[j + 1])) {
-        float4 temp = Verts[j];
-        Verts[j] = Verts[j + 1];
-        Verts[j + 1] = temp;
-      }
-    }
-  }
-
-  int hullSize = NUM_VERTICES;
-  hullIndexes[0] = refIndex;
-  hullIndexes[1] = ci * NUM_VERTICES + 1;
-  hullIndexes[2] = ci * NUM_VERTICES + 2;
-  for (int i = (ci * NUM_VERTICES) + 3; i < (ci + 1) * NUM_VERTICES; i++) {
-    while (hullSize > 2 && crossProduct(Verts[hullIndexes[hullSize - 2]],
-                                        Verts[hullIndexes[hullSize - 1]],
-                                        Verts[i] - Verts[i]) <= 0.0f) {
-      hullSize--;
-    }
-    hullIndexes[hullSize] = i;
-    hullSize++;
-  }
-  hullIndexes[hullSize] = NULL;
-  return hullSize;
-}
-
-__kernel void VolumeForceUpdate(__global const uint4 *VertIdxMat,
-                                __global float4 *Verts, __global float4 *Forces,
+__kernel void VolumeForceUpdate(__global const uint3 *VertIdxMat,
+                                __global float3 *Verts, __global float3 *Forces,
                                 int NCELLS, __global float *Kv,
                                 __global float *v0) {
   uint ci = get_global_id(1);
   uint fi = get_global_id(0);
-  uint gi = get_group_id(1);
-  uint li = get_local_id(0);
 
-  if (Kv[ci] == 0) {
+  if (Kv[ci] == 0)
     return;
-  }
-  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
-  // Get the positions of the vertices of the current face
-  float4 pos0 = Verts[vert_indicies[0]];
-  float4 pos1 = Verts[vert_indicies[1]];
-  float4 pos2 = Verts[vert_indicies[2]];
 
-  // Calculate the volume contribution of the current face using the scalar
-  // triple product
-  __local float localVolume;
-  if (fi == 0) {
-    localVolume = getVolume(VertIdxMat, Verts, ci);
-  }
+  uint3 vert_indices = VertIdxMat[fi];
+  vert_indices += ci * NUM_VERTICES;
 
-  // sometimes the localVolume isnt properly chared for all verts. This is a
-  // hacky fix
-  if (localVolume == 0) {
-    localVolume = getVolume(VertIdxMat, Verts, ci);
-  }
+  float3 pos0 = Verts[vert_indices.x];
+  float3 pos1 = Verts[vert_indices.y];
+  float3 pos2 = Verts[vert_indices.z];
 
-  // Calculate the volume strain
-  float volumeStrain = (localVolume / v0[ci]) - 1.0;
+  float localVolume = getVolume(VertIdxMat, Verts, ci);
+  float volumeStrain = (localVolume / v0[ci]) - 1.0f;
 
-  // Initialize force vectors for the vertices
-  float4 force0 = (float4)(0.0f);
-  float4 force1 = (float4)(0.0f);
-  float4 force2 = (float4)(0.0f);
+  float3 A = pos1 - pos0;
+  float3 B = pos2 - pos0;
+  float3 normal = normalize(cross(A, B));
 
-  // Calculate the normal vector of the face
-  float4 A = pos1 - pos0;
-  float4 B = pos2 - pos0;
-  float4 normal = normalize(cross(A, B));
-
-  // Update the forces acting on the vertices based on the volume strain
   float third = 1.0f / 3.0f;
-  Forces[vert_indicies[0]] -= Kv[ci] * third * volumeStrain * normal;
-  Forces[vert_indicies[1]] -= Kv[ci] * third * volumeStrain * normal;
-  Forces[vert_indicies[2]] -= Kv[ci] * third * volumeStrain * normal;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  Forces[vert_indices.x] -= Kv[ci] * third * volumeStrain * normal;
+  Forces[vert_indices.y] -= Kv[ci] * third * volumeStrain * normal;
+  Forces[vert_indices.z] -= Kv[ci] * third * volumeStrain * normal;
 }
 
-__kernel void SurfaceAreaForceUpdate(__global uint4 *VertIdxMat,
-                                     __global float4 *Verts,
-                                     __global float4 *Forces, uint NCELLS,
+__kernel void SurfaceAreaForceUpdate(__global uint3 *VertIdxMat,
+                                     __global float3 *Verts,
+                                     __global float3 *Forces, uint NCELLS,
                                      __global float *Ka, __global float *l0) {
   uint ci = get_global_id(1);
   uint fi = get_global_id(0);
-  if (Ka[ci] == 0) {
+  if (Ka[ci] == 0)
     return;
-  }
-  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
-  float4 pos0 = Verts[vert_indicies[0]];
-  float4 pos1 = Verts[vert_indicies[1]];
-  float4 pos2 = Verts[vert_indicies[2]];
+  uint3 vert_indices = VertIdxMat[fi];
+  vert_indices += ci * NUM_VERTICES;
 
-  // Calculate the lengths of the edges of the triangle
-  float4 lv0 = pos1 - pos0;
-  float4 lv1 = pos2 - pos1;
-  float4 lv2 = pos0 - pos2;
-  float4 lengths = (float4)(length(lv0), length(lv1), length(lv2), 0.0f);
+  float3 pos0 = (Verts[vert_indices.x]);
+  float3 pos1 = (Verts[vert_indices.y]);
+  float3 pos2 = (Verts[vert_indices.z]);
 
-  // Calculate the unit vectors for the edges
-  float4 ulv0 = lv0 / lengths[0];
-  float4 ulv1 = lv1 / lengths[1];
-  float4 ulv2 = lv2 / lengths[2];
+  float3 lv0 = (pos1 - pos0);
+  float3 lv1 = (pos2 - pos1);
+  float3 lv2 = (pos0 - pos2);
 
-  // Calculate the length strain for each edge
-  float4 dli = (float4)(lengths[0] / l0[ci] - 1.0, lengths[1] / l0[ci] - 1.0,
-                        lengths[2] / l0[ci] - 1.0, 0.0);
+  float l0v0 = length(lv0);
+  float l0v1 = length(lv1);
+  float l0v2 = length(lv2);
 
-  // Calculate the force contributions for each vertex
-  float third = 1.0 / 3.0;
-  Forces[vert_indicies[0]] += third * Ka[ci] * (dli[0] * ulv0 - dli[2] * ulv2);
-  Forces[vert_indicies[1]] += third * Ka[ci] * (dli[1] * ulv1 - dli[0] * ulv0);
-  Forces[vert_indicies[2]] += third * Ka[ci] * (dli[2] * ulv2 - dli[1] * ulv1);
+  float3 ulv0 = lv0 / l0v0;
+  float3 ulv1 = lv1 / l0v1;
+  float3 ulv2 = lv2 / l0v2;
+
+  float3 dli = (float3)(l0v0 / l0[ci] - 1.0f, l0v1 / l0[ci] - 1.0f,
+                        l0v2 / l0[ci] - 1.0f);
+
+  float third = 1.0f / 3.0f;
+  Forces[vert_indices.x] += third * Ka[ci] * (dli.x * ulv0 - dli.z * ulv2);
+  Forces[vert_indices.y] += third * Ka[ci] * (dli.y * ulv1 - dli.x * ulv0);
+  Forces[vert_indices.z] += third * Ka[ci] * (dli.z * ulv2 - dli.y * ulv1);
 }
 
-__kernel void StickToSurface(__global uint4 *VertIdxMat, __global float4 *Verts,
-                             __global float4 *Forces, uint NCELLS,
+__kernel void StickToSurface(__global uint3 *VertIdxMat, __global float3 *Verts,
+                             __global float3 *Forces, uint NCELLS,
                              __global float *Ks, __global float *l0) {
   uint ci = get_global_id(1);
   uint fi = get_global_id(0);
-  if (Ks[ci] == 0) {
+  if (Ks[ci] == 0)
     return;
-  }
-  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
 
-  float4 pos0 = Verts[vert_indicies[0]];
-  float4 pos1 = Verts[vert_indicies[1]];
-  float4 pos2 = Verts[vert_indicies[2]];
+  uint3 vert_indices = VertIdxMat[fi];
+  vert_indices += ci * NUM_VERTICES;
 
-  float4 A = pos1 - pos0;
-  float4 B = pos2 - pos0;
-  bool isnormal = (A.x * B.y - A.y * B.x) < 0.0f;
-  if (!isnormal) {
-    return;
-  }
+  float3 pos0 = Verts[vert_indices.x];
+  float3 pos1 = Verts[vert_indices.y];
+  float3 pos2 = Verts[vert_indices.z];
 
-  if (pos0[2] < 0.0f) {
-    Forces[vert_indicies[0]][2] -= Ks[ci] * (pos0[2] / l0[ci]) * (1.0f / 3.0f);
-  }
-  if (pos1[2] < 0.0f) {
-    Forces[vert_indicies[1]][2] -= Ks[ci] * (pos1[2] / l0[ci]) * (1.0f / 3.0f);
-  }
-  if (pos2[2] < 0.0f) {
-    Forces[vert_indicies[2]][2] -= Ks[ci] * (pos2[2] / l0[ci]) * (1.0f / 3.0f);
+  float3 COM = GetCOM(Verts, ci);
+
+  if (pos0.z < l0[ci] && pos1.z < l0[ci] && pos2.z < l0[ci]) {
+    float third = 1.0f / 3.0f;
+    Forces[vert_indices.x] += third * Ks[ci] * normalize(pos0 - COM);
+    Forces[vert_indices.y] += third * Ks[ci] * normalize(pos1 - COM);
+    Forces[vert_indices.z] += third * Ks[ci] * normalize(pos2 - COM);
   }
 
-  float4 COM = GetCOM(Verts, ci);
-  barrier(CLK_LOCAL_MEM_FENCE);
-
-  if (pos0[2] < l0[ci] && pos1[2] < l0[ci] && pos2[2] < l0[ci]) {
-    Forces[vert_indicies[0]] += (1.0f / 3.0f) * Ks[ci] * normalize(pos0 - COM);
-    Forces[vert_indicies[1]] += (1.0f / 3.0f) * Ks[ci] * normalize(pos1 - COM);
-    Forces[vert_indicies[2]] += (1.0f / 3.0f) * Ks[ci] * normalize(pos2 - COM);
-  }
-  /*if(pos1[2] < l0[ci]){
-    //Forces[vert_indicies[1]] += (1.0f/3.0f) * Ks[ci] * normalize(pos1 - COM);
-  }
-  if(pos2[2] < l0[ci]){
-    //Forces[vert_indicies[2]] += (1.0f/3.0f) * Ks[ci] * normalize(pos2 - COM);
-  }*/
+  // Push vertices below plane
+  if (pos0.z < 0.0f)
+    Forces[vert_indices.x].z -= Ks[ci] * pos0.z / l0[ci] / 3.0f;
+  if (pos1.z < 0.0f)
+    Forces[vert_indices.y].z -= Ks[ci] * pos1.z / l0[ci] / 3.0f;
+  if (pos2.z < 0.0f)
+    Forces[vert_indices.z].z -= Ks[ci] * pos2.z / l0[ci] / 3.0f;
 }
 
-__kernel void RepellingForces(__global uint4 *VertIdxMat,
-                              __global float4 *Verts, __global float4 *Forces,
+__kernel void RepellingForces(__global uint3 *VertIdxMat,
+                              __global float3 *Verts, __global float3 *Forces,
                               uint NCELLS, __global float *l0, float Kc,
                               int PBC, float L) {
-  // Get the global IDs for the current cell and face
-  uint ci = get_global_id(1);
-  uint fi = get_global_id(0);
+  uint ci = get_global_id(1); // current cell
+  uint vi = get_global_id(0); // current vertex
+  uint vert_index = ci * NUM_VERTICES + vi;
 
-  if (Kc == 0) {
-    return;
-  }
+  float3 p = Verts[vert_index];
+  float3 pf = (float3)(p.x, p.y, p.z);
 
-  uint4 vert_indicies = ci * NUM_VERTICES + VertIdxMat[fi];
-
-  // Get the positions of the vertices of the current face
-  float4 pos0 = Verts[vert_indicies[0]];
-  float4 pos1 = Verts[vert_indicies[1]];
-  float4 pos2 = Verts[vert_indicies[2]];
-  float4 pos0j, pos1j, pos2j;
-
-  // Calculate the center of mass (COM) for the current cell
-  float4 COM = GetCOM(Verts, ci);
-  uint4 FaceIndexCI = VertIdxMat[fi];
-
-  // Calculate the center of mass for the current face
-  float4 faceCOM = (pos0 + pos1 + pos2) / 3.0f;
-  float4 faceCOMj;
-
-  // Calculate the normal vector for the current face
-  float4 normali = normalize(cross(pos1 - pos0, pos2 - pos0));
-  float4 normalj;
-
-  barrier(CLK_LOCAL_MEM_FENCE);
-  // Loop over all other cells to calculate repelling forces
   for (uint cj = 0; cj < NCELLS; cj++) {
-    // Skip the current cell
-    if (cj == ci) {
+    if (ci == cj)
       continue;
-    }
-    // Loop over all faces of the other cell
-    for (uint fj = 0; fj < NUM_FACES; fj++) {
-      // Calculate the face index and get the vertex indices for the other face
-      uint4 vert_indicies_j = cj * NUM_VERTICES + VertIdxMat[fj];
 
-      // Get the positions of the vertices of the other face
-      pos0j = Verts[vert_indicies_j[0]];
-      pos1j = Verts[vert_indicies_j[1]];
-      pos2j = Verts[vert_indicies_j[2]];
-
-      // Calculate the center of mass for the other face
-      faceCOMj = (pos0j + pos1j + pos2j) / 3.0f;
-      // Calculate the normal vector for the other face
-      normalj = normalize(cross(pos1j - pos0j, pos2j - pos0j));
-
-      // Calculate the distance vector between the two face centers of mass
-      float4 d = faceCOM - faceCOMj;
-      // Apply periodic boundary conditions if necessary
+    // compute COM of other cell
+    float3 COM = (float3)(0.0f);
+    for (uint k = 0; k < NUM_VERTICES; k++) {
+      float3 v = Verts[cj * NUM_VERTICES + k];
       if (PBC) {
-        d -= L * round(d / L);
+        float3 delta = (float3)(v.x, v.y, v.z) - pf;
+        delta -= L * round(delta / L);
+        v.x = pf.x + delta.x;
+        v.y = pf.y + delta.y;
+        v.z = pf.z + delta.z;
       }
-      // Calculate the distance between the two face centers of mass
-      float dist = sqrt(dot(d, d));
-      // Skip if the faces have not crossed eachother or if the distance is
-      // greater than the cutoff distance
-      if (dot(d, normali) < 0.0f || dist > l0[ci]) {
-        continue;
+      COM += v;
+    }
+    COM /= NUM_VERTICES;
+    float3 COMf = (float3)(COM.x, COM.y, COM.z);
+
+    // Compute winding number (solid angle) for this vertex relative to cell cj
+    float winding = 0.0f;
+    for (uint fi = 0; fi < NUM_FACES; fi++) {
+      uint3 face = VertIdxMat[fi];
+      float3 v0 = Verts[cj * NUM_VERTICES + face.x];
+      float3 v1 = Verts[cj * NUM_VERTICES + face.y];
+      float3 v2 = Verts[cj * NUM_VERTICES + face.z];
+
+      float3 r0 = (float3)(v0.x, v0.y, v0.z) - pf;
+      float3 r1 = (float3)(v1.x, v1.y, v1.z) - pf;
+      float3 r2 = (float3)(v2.x, v2.y, v2.z) - pf;
+
+      if (PBC) {
+        r0 -= L * round(r0 / L);
+        r1 -= L * round(r1 / L);
+        r2 -= L * round(r2 / L);
       }
 
-      // Calculate the repelling force and update the forces acting on the
-      // vertices
-      // float4 force = Kc * normalize(faceCOM - faceCOMj) * (dist/l0[ci]);
-      // float4 force = Kc * normalize(COM-faceCOM) * (dist/l0[ci]);
-      Forces[vert_indicies[0]] += Kc * normalize(COM - pos0) * (dist / l0[ci]);
-      Forces[vert_indicies[1]] += Kc * normalize(COM - pos1) * (dist / l0[ci]);
-      Forces[vert_indicies[2]] += Kc * normalize(COM - pos2) * (dist / l0[ci]);
+      float r0_len = length(r0);
+      float r1_len = length(r1);
+      float r2_len = length(r2);
+
+      float triple = dot(r0, cross(r1, r2));
+      float denom = r0_len * r1_len * r2_len + dot(r0, r1) * r2_len +
+                    dot(r1, r2) * r0_len + dot(r2, r0) * r1_len;
+      winding += atan2(triple, denom);
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
+    winding /= (4.0f * M_PI_F); // normalize
+
+    // if vertex is inside other cell, apply repelling force
+    if (winding > 0.5f) {
+      float3 dir = normalize(pf - COMf);
+      float3 f = Kc * dir;
+      Forces[vert_index] += (float3)(f.x, f.y, f.z);
+    }
   }
 }
 
-__kernel void AllVertAttraction(__global float4 *Verts, __global float4 *Forces,
+__kernel void AllVertAttraction(__global float3 *Verts, __global float3 *Forces,
                                 __global float *l0, float L, int NCELLS,
                                 int PBC, float Kat) {
-  if (Kat == 0) {
+  if (Kat == 0)
     return;
-  }
+
   uint ci = get_global_id(1);
   uint vi = get_global_id(0);
-  float dist;
   uint vert_index = ci * NUM_VERTICES + vi;
-  float4 p1 = Verts[vert_index];
+  float3 p1 = Verts[vert_index];
+  float3 pf1 = (float3)(p1.x, p1.y, p1.z);
+
   for (int cj = 0; cj < NCELLS; cj++) {
-    if (ci != cj) {
-      for (int vj = 0; vj < NUM_VERTICES; vj++) {
-        float4 p2 = Verts[cj * NUM_VERTICES + vj];
-        float4 delta = p2 - p1;
-        if (PBC) {
-          delta -= L * round(delta / L);
-        }
-        dist = sqrt(dot(delta, delta));
-        if (dist < l0[ci]) {
-          Forces[vert_index] -=
-              Kat * 0.5f * (dist / l0[ci] - 1.0f) * normalize(delta);
-          Forces[cj * NUM_VERTICES + vj] +=
-              Kat * 0.5f * (dist / l0[ci] - 1.0f) * normalize(delta);
-        }
+    if (ci == cj)
+      continue;
+    for (int vj = 0; vj < NUM_VERTICES; vj++) {
+      float3 p2 = Verts[cj * NUM_VERTICES + vj];
+      float3 delta = (float3)(p2.x, p2.y, p2.z) - pf1;
+      delta = applyPBC(delta, L, PBC);
+      float dist = length(delta);
+      if (dist < l0[ci]) {
+        float3 f = Kat * 0.5f * (dist / l0[ci] - 1.0f) * normalize(delta);
+        Forces[vert_index] -= (float3)(f.x, f.y, f.z);
+        Forces[cj * NUM_VERTICES + vj] += (float3)(f.x, f.y, f.z);
       }
     }
   }
 }
 
-__kernel void JunctionAttraction(__global float4 *Verts,
-                                 __global float4 *Forces, __global float *l0,
-                                 float L, int NCELLS, int PBC, float Kat) {
-  float dist;
-  uint ci = get_global_id(1);
-  uint vi = get_global_id(0);
-  if (Kat == 0) {
-    return;
-  }
-  uint vert_index = ci * NUM_VERTICES + vi;
-  int hullIdx[NUM_VERTICES];
-  int nHull = ConvexHullIndexes(Verts, hullIdx);
-  for (int i = 0; i < nHull; i++) {
-    if (hullIdx[i] == vert_index) {
-      return;
-    }
-  }
-
-  float4 p1 = Verts[vert_index];
-  for (int cj = 0; cj < NCELLS; cj++) {
-    if (ci != cj) {
-      for (int vj = 0; vj < NUM_VERTICES; vj++) {
-        float4 p2 = Verts[cj * NUM_VERTICES + vj];
-        float4 delta = p2 - p1;
-        if (PBC) {
-          delta -= L * round(delta / L);
-        }
-        dist = sqrt(dot(delta, delta));
-        if (dist < l0[ci]) {
-          Forces[vert_index] -=
-              Kat * 0.5f * (dist / l0[ci] - 1.0f) * normalize(delta);
-          Forces[cj * NUM_VERTICES + vj] +=
-              Kat * 0.5f * (dist / l0[ci] - 1.0f) * normalize(delta);
-        }
-      }
-    }
-  }
-}
-
-__kernel void EulerPosition(__global float4 *Verts, __global float4 *Forces,
+__kernel void EulerPosition(__global float3 *Verts, __global float3 *Forces,
                             float dt) {
   uint ci = get_global_id(1);
   uint vi = get_global_id(0);
-
   uint vert_index = ci * NUM_VERTICES + vi;
   Verts[vert_index] += Forces[vert_index] * dt;
-  Forces[vert_index] = (float4)(0.0f);
+  Forces[vert_index] = (float3)(0.0f);
 }

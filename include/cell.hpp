@@ -39,9 +39,9 @@ public:
   float Ks;
   float Volume;
   float SurfaceArea;
-  std::vector<std::array<float, 4>> Verts;
-  std::vector<std::array<float, 4>> Forces;
-  std::vector<std::array<unsigned int, 4>> Faces;
+  std::vector<std::array<float, 3>> Verts;
+  std::vector<std::array<float, 3>> Forces;
+  std::vector<std::array<unsigned int, 3>> Faces;
 
   float GetVolume();
   float GetSurfaceArea();

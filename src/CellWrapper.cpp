@@ -11,7 +11,6 @@ void init_Cell3D(py::module &m) {
       .def_readwrite("Ka", &DPM::Cell3D::Ka)
       .def_readwrite("Ks", &DPM::Cell3D::Ks)
       .def_readwrite("Verts", &DPM::Cell3D::Verts)
-      .def("CLShapeEuler", &DPM::Cell3D::CLShapeEuler)
       .def("GetVolume", &DPM::Cell3D::GetVolume)
       .def("GetPositions", &DPM::Cell3D::GetPositions)
       .def("GetVesselPositions", &DPM::Cell3D::GetVesselPositions)

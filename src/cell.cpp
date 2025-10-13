@@ -68,21 +68,21 @@ Cell3D::Cell3D(std::array<float, 3> starting_point, float calA, float _r0) {
   Verts.resize(12);
   float t =
       (1 + sqrt(5)) / 2; // only need first 3, 0 at end is padded for GPU float4
-  Verts[0] = {-1, t, 0, 0};
-  Verts[0] = {-1, t, 0, 0};
-  Verts[1] = {1, t, 0, 0};
-  Verts[2] = {-1, -t, 0, 0};
-  Verts[3] = {1, -t, 0, 0};
+  Verts[0] = {-1, t, 0};
+  Verts[0] = {-1, t, 0};
+  Verts[1] = {1, t, 0};
+  Verts[2] = {-1, -t, 0};
+  Verts[3] = {1, -t, 0};
 
-  Verts[4] = {0, -1, t, 0};
-  Verts[5] = {0, 1, t, 0};
-  Verts[6] = {0, -1, -t, 0};
-  Verts[7] = {0, 1, -t, 0};
+  Verts[4] = {0, -1, t};
+  Verts[5] = {0, 1, t};
+  Verts[6] = {0, -1, -t};
+  Verts[7] = {0, 1, -t};
 
-  Verts[8] = {t, 0, -1, 0};
-  Verts[9] = {t, 0, 1, 0};
-  Verts[10] = {-t, 0, -1, 0};
-  Verts[11] = {-t, 0, 1, 0};
+  Verts[8] = {t, 0, -1};
+  Verts[9] = {t, 0, 1};
+  Verts[10] = {-t, 0, -1};
+  Verts[11] = {-t, 0, 1};
   for (int i = 0; i < 12; i++) {
     float norm =
         std::sqrt(Verts[i][0] * Verts[i][0] + Verts[i][1] * Verts[i][1] +
@@ -91,35 +91,35 @@ Cell3D::Cell3D(std::array<float, 3> starting_point, float calA, float _r0) {
     Verts[i][1] /= norm;
     Verts[i][2] /= norm;
   }
-  Faces.push_back(std::array<unsigned int, 4>{0, 11, 5, 0});
-  Faces.push_back(std::array<unsigned int, 4>{0, 5, 1, 0});
-  Faces.push_back(std::array<unsigned int, 4>{0, 1, 7, 0});
-  Faces.push_back(std::array<unsigned int, 4>{0, 7, 10, 0});
-  Faces.push_back(std::array<unsigned int, 4>{0, 10, 11, 0});
+  Faces.push_back(std::array<unsigned int, 3>{0, 11, 5});
+  Faces.push_back(std::array<unsigned int, 3>{0, 5, 1});
+  Faces.push_back(std::array<unsigned int, 3>{0, 1, 7});
+  Faces.push_back(std::array<unsigned int, 3>{0, 7, 10});
+  Faces.push_back(std::array<unsigned int, 3>{0, 10, 11});
 
   // 5 adjacent faces
-  Faces.push_back(std::array<unsigned int, 4>{1, 5, 9, 0});
-  Faces.push_back(std::array<unsigned int, 4>{5, 11, 4, 0});
-  Faces.push_back(std::array<unsigned int, 4>{11, 10, 2, 0});
-  Faces.push_back(std::array<unsigned int, 4>{10, 7, 6, 0});
-  Faces.push_back(std::array<unsigned int, 4>{7, 1, 8, 0});
+  Faces.push_back(std::array<unsigned int, 3>{1, 5, 9});
+  Faces.push_back(std::array<unsigned int, 3>{5, 11, 4});
+  Faces.push_back(std::array<unsigned int, 3>{11, 10, 2});
+  Faces.push_back(std::array<unsigned int, 3>{10, 7, 6});
+  Faces.push_back(std::array<unsigned int, 3>{7, 1, 8});
 
   // 5 faces around point 3
-  Faces.push_back(std::array<unsigned int, 4>{3, 9, 4, 0});
-  Faces.push_back(std::array<unsigned int, 4>{3, 4, 2, 0});
-  Faces.push_back(std::array<unsigned int, 4>{3, 2, 6, 0});
-  Faces.push_back(std::array<unsigned int, 4>{3, 6, 8, 0});
-  Faces.push_back(std::array<unsigned int, 4>{3, 8, 9, 0});
+  Faces.push_back(std::array<unsigned int, 3>{3, 9, 4});
+  Faces.push_back(std::array<unsigned int, 3>{3, 4, 2});
+  Faces.push_back(std::array<unsigned int, 3>{3, 2, 6});
+  Faces.push_back(std::array<unsigned int, 3>{3, 6, 8});
+  Faces.push_back(std::array<unsigned int, 3>{3, 8, 9});
 
   // 5 adjacent faces
-  Faces.push_back(std::array<unsigned int, 4>{4, 9, 5, 0});
-  Faces.push_back(std::array<unsigned int, 4>{2, 4, 11, 0});
-  Faces.push_back(std::array<unsigned int, 4>{6, 2, 10, 0});
-  Faces.push_back(std::array<unsigned int, 4>{8, 6, 7, 0});
-  Faces.push_back(std::array<unsigned int, 4>{9, 8, 1, 0});
+  Faces.push_back(std::array<unsigned int, 3>{4, 9, 5});
+  Faces.push_back(std::array<unsigned int, 3>{2, 4, 11});
+  Faces.push_back(std::array<unsigned int, 3>{6, 2, 10});
+  Faces.push_back(std::array<unsigned int, 3>{8, 6, 7});
+  Faces.push_back(std::array<unsigned int, 3>{9, 8, 1});
 
-  std::array<unsigned int, 4> newF;
-  std::vector<std::array<unsigned int, 4>> newFaces;
+  std::array<unsigned int, 3> newF;
+  std::vector<std::array<unsigned int, 3>> newFaces;
   unsigned int f = 2;
   for (unsigned int i = 0; i < f; i++) {
     unsigned int steps = Faces.size();
@@ -127,13 +127,13 @@ Cell3D::Cell3D(std::array<float, 3> starting_point, float calA, float _r0) {
       unsigned int a = Cell3D::AddMiddlePoint(Faces[j][0], Faces[j][1]);
       unsigned int b = Cell3D::AddMiddlePoint(Faces[j][1], Faces[j][2]);
       unsigned int c = Cell3D::AddMiddlePoint(Faces[j][2], Faces[j][0]);
-      newF = {Faces[j][0], a, c, 0};
+      newF = {Faces[j][0], a, c};
       newFaces.push_back(newF);
-      newF = {Faces[j][1], b, a, 0};
+      newF = {Faces[j][1], b, a};
       newFaces.push_back(newF);
-      newF = {Faces[j][2], c, b, 0};
+      newF = {Faces[j][2], c, b};
       newFaces.push_back(newF);
-      newF = {a, b, c, 0};
+      newF = {a, b, c};
       newFaces.push_back(newF);
     }
     Faces = newFaces;
@@ -148,7 +148,7 @@ Cell3D::Cell3D(std::array<float, 3> starting_point, float calA, float _r0) {
     Verts[vi][0] += starting_point[0];
     Verts[vi][1] += starting_point[1];
     Verts[vi][2] += starting_point[2];
-    Forces[vi] = {0, 0, 0, 0};
+    Forces[vi] = {0, 0, 0};
   }
   v0 = (4.0f / 3.0f) * M_PI * pow(r0, 3);
   sa0 = pow((6 * sqrt(M_PI) * v0 * calA), (2.0f / 3.0f));
@@ -170,8 +170,8 @@ unsigned int Cell3D::AddMiddlePoint(unsigned int p1, unsigned int p2) {
       return midpointCache[i][1];
   }
 
-  std::array<float, 4> vert1 = Verts[p2], vert2 = Verts[p1];
-  std::array<float, 4> middlePoint;
+  std::array<float, 3> vert1 = Verts[p2], vert2 = Verts[p1];
+  std::array<float, 3> middlePoint;
   for (int i = 0; i < 3; i++) {
     middlePoint[i] = vert1[i] + vert2[i];
     middlePoint[i] *= 0.5;
@@ -182,7 +182,6 @@ unsigned int Cell3D::AddMiddlePoint(unsigned int p1, unsigned int p2) {
                            middlePoint[2] * middlePoint[2]);
     middlePoint[i] /= norm;
   }
-  middlePoint[3] = 0;
   Verts.push_back(middlePoint);
   i = Verts.size() - 1;
   std::vector<int> cache;
@@ -197,9 +196,9 @@ unsigned int Cell3D::AddMiddlePoint(unsigned int p1, unsigned int p2) {
 float Cell3D::GetVolume() {
   float volume = 0.0;
   for (const auto &tri : Faces) {
-    std::array<float, 4> v0 = Verts[tri[0]];
-    std::array<float, 4> v1 = Verts[tri[1]];
-    std::array<float, 4> v2 = Verts[tri[2]];
+    std::array<float, 3> v0 = Verts[tri[0]];
+    std::array<float, 3> v1 = Verts[tri[1]];
+    std::array<float, 3> v2 = Verts[tri[2]];
     std::array<float, 3> cross;
     cross[0] = v1[1] * v2[2] - v1[2] * v2[1];
     cross[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -214,11 +213,11 @@ float Cell3D::GetVolume() {
 float Cell3D::GetSurfaceArea() {
   float SurfaceArea = 0.0;
   for (const auto &tri : Faces) {
-    std::array<float, 4> v0 = Verts[tri[0]];
-    std::array<float, 4> v1 = Verts[tri[1]];
-    std::array<float, 4> v2 = Verts[tri[2]];
-    std::array<float, 4> A = {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2], 0};
-    std::array<float, 4> B = {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2], 0};
+    std::array<float, 3> v0 = Verts[tri[0]];
+    std::array<float, 3> v1 = Verts[tri[1]];
+    std::array<float, 3> v2 = Verts[tri[2]];
+    std::array<float, 3> A = {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]};
+    std::array<float, 3> B = {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]};
     std::array<float, 3> cross;
     cross[0] = A[1] * B[2] - A[2] * B[1];
     cross[1] = A[2] * B[0] - A[0] * B[2];
