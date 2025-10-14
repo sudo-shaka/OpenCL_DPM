@@ -1,5 +1,7 @@
 C++ written OpenCL GPU accelerated python module for the Deformable Particle Model in 2D and 3D. 
 
+Tested on nvidia and amd graphics cards.
+
 Inspired by:
 A. Boromand, A. Signoriello, F. Ye, C. S. O'Hern, and M. D. Shattuck, "Jamming of deformable polygons," Phys. Rev. Lett. 121 248003 (2018).
 
