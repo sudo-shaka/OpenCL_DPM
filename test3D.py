@@ -4,7 +4,6 @@ ctypes.CDLL("libOpenCL.so", mode=ctypes.RTLD_GLOBAL)
 import clDPM
 import plot
 from matplotlib import pyplot as plt
-from progressbar import progressbar
 
 c = clDPM.Cell3D([0.0]*3,1.0,1.0) #input is [starting_point],CalA, radius
 c.Ka = 2.0
@@ -17,11 +16,12 @@ T.Disperse2D()
 
 Faces = T.Cells[0].GetFaces()
 nsteps = 25
-nout = 10
+nout = 1
 print("Starting 3D simulation with "+str(T.NCELLS)+" particles for "+str(nsteps)+" timesteps " + str(nout) + " times")
-for i in progressbar(range(nout)):
+for i in range(nout):
   T.CLEulerUpdate(nsteps, 0.01)
   plot.Plot3DTissue2D(T)
   filename = "test"+str(i)+".png"
   plt.savefig(filename)
+  print("Step "+str(i)+" of "+str(nout)+" completed")
   plt.close()

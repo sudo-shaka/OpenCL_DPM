@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 def Plot2DTissue2D(T):
     plt.figure(figsize=(10,10))
+    plt.style.use('dark_background')
     for ci in range(T.NCELLS):
         pos=np.array(T.Cells[ci].Verts);
         pos=np.mod(pos.T,T.L)
@@ -23,6 +24,7 @@ def Plot2DTissue2D(T):
 def Plot3DTissue3D(T):
   Faces = T.Cells[0].GetFaces()
   fig = plt.figure(figsize=(10,10))
+  plt.style.use('dark_background')
   ax = fig.add_subplot(projection='3d')
   for ci in range(T.NCELLS):
     pos = T.Cells[ci].GetPositions()
@@ -42,6 +44,7 @@ def Plot3DTissue3D(T):
 
 
 def Plot3DTissue2D(T):
+  plt.style.use('dark_background')
   Faces = T.Cells[0].GetFaces()
   np.random.seed(1)
   r1 = np.random.rand(T.NCELLS)
