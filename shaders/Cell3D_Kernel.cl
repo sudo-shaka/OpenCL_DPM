@@ -164,28 +164,13 @@ SurfaceAreaForceUpdate(__global const uint3 *VertIdxMat, __global float3 *Verts,
                         (lengths[2] / target_length) - 1.0f  // dli.Z
   );
 
-  // Calculate scale factor
   float scale = Ka[ci] * sqrt(a0[ci]) / target_length * 0.3f;
-
-  // Calculate forces exactly as in Go code:
-  // f0 := subVector(multiplyVec(copyVec3D(lv0), dli.X),
-  // multiplyVec(copyVec3D(lv2), dli.Z))
   float3 f0 = (lv0_norm * dli.x) - (lv2_norm * dli.z);
-
-  // f1 := subVector(multiplyVec(copyVec3D(lv1), dli.Y),
-  // (multiplyVec(copyVec3D(lv0), dli.X)))
   float3 f1 = (lv1_norm * dli.y) - (lv0_norm * dli.x);
-
-  // f2 := subVector(multiplyVec(copyVec3D(lv2), dli.Z),
-  // (multiplyVec(copyVec3D(lv1), dli.Y)))
   float3 f2 = (lv2_norm * dli.z) - (lv1_norm * dli.y);
-
-  // Scale the forces
   f0 *= scale;
   f1 *= scale;
   f2 *= scale;
-
-  // Add forces to vertices (Cell.Fa[face[0]].addVec(f0), etc.)
   atomic_add_float3(&Forces[i0], f0);
   atomic_add_float3(&Forces[i1], f1);
   atomic_add_float3(&Forces[i2], f2);
