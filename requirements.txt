@@ -1,0 +1,5 @@
+pybind11
+matplotlib
+progressbar2
+pybind11
+setuptools
